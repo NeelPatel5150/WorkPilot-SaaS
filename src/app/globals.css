@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eff6ff;
+  --secondary-foreground: #111827;
+  --primary-rgb: 37, 99, 235;
+  --background: #eff6ff;
+  --card: #ffffff;
+  --border: #111827;
+  --foreground: #0f172a;
+  --muted: #e2e8f0;
+  --muted-foreground: #64748b;
+  --destructive: #dc2626;
+  --success: #16a34a;
+  --warning: #f59e0b;
+
+  --radius: 18px;
+  --border-width: 2px;
+  --shadow-offset: 6px;
+
+  /* Defaults — overridden by company theme on <html> after register */
+  --primary-shine: linear-gradient(135deg, #60a5fa 0%, #3b82f6 28%, #2563eb 58%, #1e40af 100%);
+  --card-shine: linear-gradient(155deg, #ffffff 0%, #f0f7ff 45%, #dbeafe 100%);
+  --input-shine: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  --sidebar-shine: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+  --stat-accent: linear-gradient(90deg, #1e40af 0%, #2563eb 45%, #fbbf24 100%);
+  --portal-glow:
+    radial-gradient(ellipse 80% 55% at 15% 0%, rgba(37, 99, 235, 0.28), transparent 62%),
+    radial-gradient(ellipse 70% 45% at 95% 5%, rgba(251, 191, 36, 0.2), transparent 55%);
+  --app-bg:
+    radial-gradient(ellipse 1100px 580px at 8% -12%, rgba(37, 99, 235, 0.32), transparent 58%),
+    radial-gradient(ellipse 900px 520px at 100% 0%, rgba(251, 191, 36, 0.24), transparent 52%),
+    radial-gradient(ellipse 800px 420px at 50% 110%, rgba(37, 99, 235, 0.14), transparent 55%),
+    linear-gradient(165deg, #eff6ff 0%, #f8fafc 40%, #dbeafe 100%);
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--secondary);
+  background-image: var(--app-bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, sans-serif;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.app-shell {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: transparent;
+}
+
+.portal-glow {
+  background: var(--portal-glow);
+}
+
+@keyframes nb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nb-toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-toast,
+  .nb-button {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.nb-card {
+  background-color: #ffffff;
+  background-image: var(--card-shine);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-offset) var(--shadow-offset) 0 0 var(--border);
+}
+
+.nb-button {
+  background-color: var(--primary) !important;
+  background-image: var(--primary-shine) !important;
+  color: #ffffff !important;
+  border: var(--border-width) solid var(--border);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 0 var(--border);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.nb-button:hover {
+  filter: brightness(1.08);
+}
+
+.nb-button:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--border);
+}
+
+.nb-input {
+  border: var(--border-width) solid var(--border);
+  border-radius: 10px;
+  background-color: #ffffff;
+  background-image: var(--input-shine);
+}
+
+.nb-nav-active {
+  background-color: var(--primary) !important;
+  background-image: var(--primary-shine) !important;
+  color: #ffffff !important;
+  border-color: var(--border);
+  /* bottom-only offset so the right edge doesn’t collide with the sidebar divider */
+  box-shadow: 0 2px 0 0 var(--border);
+}
+
+.nb-toast {
+  animation: nb-toast-in 0.22s ease-out;
+  border: var(--border-width) solid var(--border);
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 0 var(--border);
+}
+
+.nb-toast[data-leaving="true"] {
+  animation: nb-toast-out 0.18s ease-in forwards;
+}
+
+.nb-toast-success {
+  background-image: linear-gradient(135deg, #dcfce7 0%, #86efac 100%);
+}
+
+.nb-toast-error {
+  background-image: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
+}
+
+.nb-toast-info {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--secondary) 70%, white),
+    color-mix(in srgb, var(--primary) 28%, white)
+  );
+}
+
+.nb-stat-accent {
+  background-color: var(--primary);
+  background-image: var(--stat-accent);
+}
+
+.nb-sidebar {
+  overflow: hidden;
+}
+
+/* Sidebar: fixed chrome, hidden scrollbar on nav only */
+.nb-sidebar-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nb-sidebar-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Clickable affordance */
+a,
+button,
+[role="button"],
+summary,
+label[for],
+select,
+input[type="file"],
+input[type="checkbox"],
+input[type="radio"],
+.nb-button {
+  cursor: pointer;
+}
+
+/* Neo-brutal custom scrollbar (portal main + any .nb-scroll) */
+.nb-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) color-mix(in srgb, var(--secondary) 70%, white);
+}
+
+.nb-scroll::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.nb-scroll::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--secondary) 85%, white);
+  border-left: 2px solid var(--border);
+}
+
+.nb-scroll::-webkit-scrollbar-thumb {
+  background-image: var(--primary-shine);
+  background-color: var(--primary);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 1px 1px 0 0 var(--border);
+}
+
+.nb-scroll::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.08);
+}
+
+.nb-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Mobile: tables scroll without blowing the layout */
+.nb-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    max-height: 100dvh;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px; /* avoid iOS zoom on focus */
+  }
+
+  .nb-input {
+    min-height: 44px;
+  }
+}
+

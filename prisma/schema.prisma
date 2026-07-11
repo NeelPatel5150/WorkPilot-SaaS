@@ -1,0 +1,510 @@
+// WorkPilot — White-Label HRMS Prisma Schema
+// Multi-tenant strategy: every business table carries companyId for data isolation
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LATE
+  ON_LEAVE
+  HOLIDAY
+  WEEK_OFF
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_NOTICE
+  RESIGNED
+  TERMINATED
+}
+
+enum AttendanceExceptionType {
+  MISSING_CHECKOUT
+  FORGOT_PUNCH
+  WFH
+  ADJUSTMENT
+}
+
+enum AttendanceExceptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ------------------------------------------------------------------
+// BETTER AUTH (required tables)
+// ------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Multi-tenant + RBAC extensions
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role          UserRole  @default(EMPLOYEE)
+  isActive      Boolean   @default(true)
+  mustChangePassword Boolean @default(false)
+
+  sessions      Session[]
+  accounts      Account[]
+  employee      Employee?
+  activityLogs  ActivityLog[]
+  notifications Notification[]
+
+  @@index([companyId])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ------------------------------------------------------------------
+// TENANT / WHITE-LABEL
+// ------------------------------------------------------------------
+
+model Company {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String   @default("#2563EB")
+  secondaryColor String   @default("#EFF6FF")
+  customDomain   String?  @unique
+  smtpConfig     Json?
+  whatsappNumber String?
+  timezone       String   @default("Asia/Kolkata")
+  isActive       Boolean  @default(true)
+  setupComplete  Boolean  @default(false) // post-register onboarding wizard
+  // Work timing / attendance policy
+  workStartHour    Int   @default(10)
+  workStartMinute  Int   @default(0)
+  graceMinutes     Int   @default(15)
+  standardHours    Float @default(8)
+  weeklyOffs       Json  @default("[0]") // 0=Sun … 6=Sat
+  officeLat        Float?
+  officeLng        Float?
+  geofenceRadiusM  Int   @default(0) // 0 = off
+  officeIpAllowlist String? // comma-separated prefixes e.g. 203.0.113.
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users         User[]
+  employees     Employee[]
+  departments   Department[]
+  roles         Role[]
+  attendance    Attendance[]
+  leaveRequests LeaveRequest[]
+  leaveTypes    LeaveType[]
+  leaveBalances LeaveBalance[]
+  holidays      Holiday[]
+  announcements Announcement[]
+  notifications Notification[]
+  documents     Document[]
+  activityLogs  ActivityLog[]
+  settings      Setting[]
+  salarySlips   SalarySlip[]
+  attendanceExceptions AttendanceException[]
+  payrollLocks  PayrollMonthLock[]
+
+  @@map("companies")
+}
+
+// ------------------------------------------------------------------
+// CUSTOM ROLES
+// ------------------------------------------------------------------
+
+model Role {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  permissions Json
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("roles")
+}
+
+// ------------------------------------------------------------------
+// ORG STRUCTURE
+// ------------------------------------------------------------------
+
+model Department {
+  id        String     @id @default(cuid())
+  companyId String
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  employees Employee[]
+  createdAt DateTime   @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("departments")
+}
+
+model Employee {
+  id               String           @id @default(cuid())
+  companyId        String
+  company          Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeCode     String
+  firstName        String
+  lastName         String
+  designation      String?
+  departmentId     String?
+  department       Department?      @relation(fields: [departmentId], references: [id])
+  managerId        String?
+  manager          Employee?        @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports    Employee[]       @relation("EmployeeManager")
+  phone            String?
+  joiningDate      DateTime?
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  emergencyContact String?
+  basicSalary      Float?
+  exitDate         DateTime?
+  exitReason       String?
+  onboardingDone   Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  attendance    Attendance[]
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+  documents     Document[]
+  salarySlips   SalarySlip[]
+  attendanceExceptions AttendanceException[]
+  coveredLeaves LeaveRequest[] @relation("LeaveCover")
+
+  @@unique([companyId, employeeCode])
+  @@index([companyId])
+  @@map("employees")
+}
+
+// ------------------------------------------------------------------
+// ATTENDANCE
+// ------------------------------------------------------------------
+
+model Attendance {
+  id            String           @id @default(cuid())
+  companyId     String
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId    String
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date          DateTime         @db.Date
+  checkIn       DateTime?
+  checkOut      DateTime?
+  status        AttendanceStatus @default(PRESENT)
+  workingHours  Float?
+  overtimeHours Float?
+  isLate        Boolean          @default(false)
+  isEarlyExit   Boolean          @default(false)
+  checkInLat    Float?
+  checkInLng    Float?
+  checkInIp     String?
+  breakMinutes  Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([companyId, date])
+  @@map("attendance")
+}
+
+// ------------------------------------------------------------------
+// LEAVE
+// ------------------------------------------------------------------
+
+model LeaveType {
+  id            String         @id @default(cuid())
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
+  code          String?        // CL | SL | EL | WFH | CO
+  defaultDays   Int            @default(0)
+  requiresProof Boolean        @default(false)
+  carryForward  Boolean        @default(false)
+  maxCarryDays  Int            @default(0)
+  sandwichRule  Boolean        @default(false)
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+
+  @@unique([companyId, name])
+  @@map("leave_types")
+}
+
+model LeaveRequest {
+  id              String      @id @default(cuid())
+  companyId       String
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  startDate       DateTime    @db.Date
+  endDate         DateTime    @db.Date
+  isHalfDay       Boolean     @default(false)
+  reason          String?
+  attachmentUrl   String?
+  coverEmployeeId String?
+  coverEmployee   Employee?   @relation("LeaveCover", fields: [coverEmployeeId], references: [id])
+  status          LeaveStatus @default(PENDING)
+  approverId      String?
+  approverComment String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([companyId, status])
+  @@index([employeeId])
+  @@map("leave_requests")
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year        Int
+  allocated   Float     @default(0)
+  used        Float     @default(0)
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@map("leave_balances")
+}
+
+// ------------------------------------------------------------------
+// HOLIDAYS / ANNOUNCEMENTS
+// ------------------------------------------------------------------
+
+model Holiday {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  date           DateTime  @db.Date
+  reminderSentAt DateTime?
+
+  @@index([companyId])
+  @@index([date])
+  @@map("holidays")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@map("announcements")
+}
+
+// ------------------------------------------------------------------
+// NOTIFICATIONS / DOCUMENTS / LOGS / SETTINGS
+// ------------------------------------------------------------------
+
+model Notification {
+  id        String    @id @default(cuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  channel   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([companyId, userId])
+  @@map("notifications")
+}
+
+model Document {
+  id         String    @id @default(cuid())
+  companyId  String
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name       String
+  fileUrl    String
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([companyId])
+  @@map("documents")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@map("activity_logs")
+}
+
+model Setting {
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+
+  @@unique([companyId, key])
+  @@map("settings")
+}
+
+// ------------------------------------------------------------------
+// PAYROLL / SALARY SLIPS
+// ------------------------------------------------------------------
+
+model SalarySlip {
+  id             String   @id @default(cuid())
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  year           Int
+  month          Int
+  basic          Float
+  allowances     Float    @default(0)
+  deductions     Float    @default(0)
+  lopDays        Float    @default(0)
+  pf             Float    @default(0)
+  esi            Float    @default(0)
+  tds            Float    @default(0)
+  netPay         Float
+  presentDays    Float    @default(0)
+  workingDays    Int      @default(0)
+  overtimeHours  Float    @default(0)
+  status         String   @default("DRAFT") // DRAFT | PUBLISHED | LOCKED
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([employeeId, year, month])
+  @@index([companyId, year, month])
+  @@map("salary_slips")
+}
+
+model PayrollMonthLock {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  year       Int
+  month      Int
+  lockedAt   DateTime @default(now())
+  lockedById String?
+
+  @@unique([companyId, year, month])
+  @@map("payroll_month_locks")
+}
+
+model AttendanceException {
+  id               String                     @id @default(cuid())
+  companyId        String
+  company          Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee                   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date             DateTime                   @db.Date
+  type             AttendanceExceptionType
+  status           AttendanceExceptionStatus  @default(PENDING)
+  reason           String?
+  proposedCheckIn  DateTime?
+  proposedCheckOut DateTime?
+  reviewerId       String?
+  reviewComment    String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@index([companyId, status])
+  @@index([employeeId])
+  @@map("attendance_exceptions")
+}
