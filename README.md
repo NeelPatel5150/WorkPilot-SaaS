@@ -1,120 +1,146 @@
-# WorkPilot
+<p align="center">
+  <img src="./public/icons/icon.svg" alt="WorkPilot" width="112" height="112" />
+</p>
 
-**White-label multi-tenant HRMS** — one codebase, many companies, each with its own brand, admin portal, and employee portal.
+<h1 align="center">WorkPilot</h1>
 
-Companies register → walk through a short **onboarding wizard** (brand → work timing → first employee) → run attendance, leave, payroll, and more under their own colors and logo.
+<p align="center">
+  <strong>White-label multi-tenant HRMS</strong><br />
+  One codebase · Many companies · Each with its own brand, admin portal &amp; employee PWA
+</p>
 
-| Doc | Purpose |
-|---|---|
-| **[HOW_TO_USE.md](./HOW_TO_USE.md)** | Local run + day-to-day usage |
-| **[DEPLOY.md](./DEPLOY.md)** | Production deploy checklist |
-| **[cookbook.md](./cookbook.md)** | Architecture & product rules for builders |
+<p align="center">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=nextdotjs" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Prisma" src="https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white" />
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+  <img alt="PWA" src="https://img.shields.io/badge/PWA-Installable-5A0FC8?style=flat-square&logo=pwa&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-Private-lightgrey?style=flat-square" />
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="./HOW_TO_USE.md">How to use</a> ·
+  <a href="./DEPLOY.md">Deploy</a> ·
+  <a href="./cookbook.md">Cookbook</a>
+</p>
 
 ---
 
-## What is this product?
+## Why WorkPilot?
 
-WorkPilot is a SaaS HR platform for SMEs that want a branded HRMS without buying or hosting a separate app per company.
+Sell or run a **branded HRMS for every client** from a single deploy. Companies register, complete a short onboarding wizard, and get their own colors, logo, admin portal, and employee app — without a separate codebase per tenant.
+
+| | |
+|---|---|
+| **For agencies & founders** | One product, many white-label clients |
+| **For SMEs** | Attendance, leave, payroll, announcements — without enterprise bloat |
+| **For staff** | Mobile-friendly employee portal + installable PWA |
+
+---
+
+## Product at a glance
+
+```text
+  Register company  →  Onboarding wizard  →  Admin portal
+       │                    │                      │
+       │              Brand · Timing · Team        ├── Employees & departments
+       │                                           ├── Attendance & exceptions
+       │                                           ├── Leave & approvals
+       │                                           ├── Payroll & payslips
+       └───────────────────────────────────────────┴── Holidays · Docs · Reports
+                                                       │
+                                                       ▼
+                                               Employee portal + PWA
+                                               Punch · Leave · Payslips
+```
 
 **Two portals, one product**
 
 | Portal | Who | What they do |
-|---|---|---|
-| **Admin** | Company Admin, HR, Manager | Employees, departments, attendance, leave approvals, payroll, holidays, announcements, documents, branding, work policy, audit |
-| **Employee** | Staff | Punch in/out, leave, payslips, announcements, profile, mobile-friendly dock + PWA |
+|:---|:---|:---|
+| **Admin** | Company Admin, HR, Manager | People, attendance, leave approvals, payroll, branding, work policy, audit |
+| **Employee** | Staff | Check-in/out, leave, payslips, announcements, profile — dock + PWA |
 
-**White-label**
+**True white-label per tenant**
 
-Each tenant (company) owns:
-
-- Display name, logo, favicon  
-- Primary / secondary colors (CSS variables — no FOUC)  
-- Work start time, grace minutes, weekly offs, optional geofence / IP allowlist  
+- Company name, logo, favicon  
+- Primary / secondary colors (CSS variables, no FOUC)  
+- Work start, grace minutes, weekly offs, optional geofence / IP allowlist  
 - Optional custom domain / subdomain  
 
-Isolation is row-level: every business row is scoped by `companyId`.
+Data isolation is **row-level**: every business row is scoped by `companyId`.
 
 ---
 
-## Who it’s for
+## Features
 
-- Agencies / founders selling HRMS to multiple clients from one deploy  
-- SMEs that need attendance + leave + basic Indian-style payroll without a heavy enterprise suite  
-- Teams that want installable mobile UX (PWA) without a native app store release  
-
----
-
-## Core features
-
-### Onboarding (after register)
-
+### Onboarding
 1. **Brand** — name, colors, logo, favicon  
 2. **Timing** — office start, grace, standard hours, weekly offs  
 3. **Team** — invite first employee (skippable)  
 
-Admins with `setupComplete: false` are redirected to `/onboarding` until they finish or skip.
+Incomplete setup redirects admins to `/onboarding` until they finish or skip.
 
 ### People & org
-
-- Multi-role: `SUPER_ADMIN`, `COMPANY_ADMIN`, `HR`, `MANAGER`, `EMPLOYEE`  
+- Roles: `SUPER_ADMIN` · `COMPANY_ADMIN` · `HR` · `MANAGER` · `EMPLOYEE`  
 - Departments, designations, employee codes  
-- Invite flow + must-change-password accept page  
-- Offboarding: resign / terminate / notice kills login; admins can **Activate** again  
+- Invite + must-change-password accept flow  
+- Offboard (resign / terminate / notice) revokes login; **Activate** restores it  
+- Company admins cannot be offboarded  
 
 ### Attendance
-
-- Check-in / check-out with late detection from company work policy  
+- Check-in / check-out with late detection from company policy  
 - Weekly offs & holidays awareness  
 - Optional geofence / office IP allowlist  
-- Attendance exceptions queue + employee requests  
+- Exceptions queue + employee requests  
 
 ### Leave
-
-- Configurable leave types (e.g. Casual / Sick / EL-style) with balances  
+- Configurable leave types & balances  
 - Apply, cover person, sandwich rules where configured  
 - Manager team-scoped approvals; admin/HR broader scope  
 
 ### Payroll
-
-- Monthly slips with LOP, PF / ESI / TDS-style statutory lines  
+- Monthly slips with LOP and PF / ESI / TDS-style lines  
 - Draft → edit → publish → lock month  
 - Print / PDF via `/api/payslips/[id]/print`  
 
 ### Comms & content
-
 - In-app notifications (+ optional email / WhatsApp / push)  
-- Announcements, holidays, document uploads & expiry digests (worker)  
-- Activity / audit views for admins  
+- Announcements, holidays, documents & expiry digests  
+- Activity / audit for admins  
 
 ### Reports & ops
-
 - CSV / Excel exports where wired  
-- BullMQ worker for digests and background notification jobs  
-- PWA: installable shell, service worker, dynamic web manifest  
+- BullMQ worker for digests & notification jobs  
+- Installable PWA (service worker + dynamic web manifest)  
 
 ---
 
 ## Tech stack
 
 | Layer | Choice |
-|---|---|
-| App | Next.js 16 (App Router), React 19, TypeScript |
-| UI | Tailwind CSS 4, neo-brutalist brand tokens, Framer Motion |
-| Auth | Better Auth (email/password sessions) |
-| Data | PostgreSQL + Prisma 7 |
+|:---|:---|
+| App | **Next.js 16** (App Router), **React 19**, TypeScript |
+| UI | Tailwind CSS 4, neo-brutalist tokens, Framer Motion |
+| Auth | Better Auth (email / password sessions) |
+| Data | PostgreSQL + **Prisma 7** |
 | Jobs | Redis + BullMQ (`npm run worker`) |
-| Email | Resend (optional locally) |
-| WhatsApp | Twilio (optional) |
-| Push | Firebase Cloud Messaging (optional) |
+| Email | Resend *(optional locally)* |
+| WhatsApp | Twilio *(optional)* |
+| Push | Firebase Cloud Messaging *(optional)* |
 | Storage | Local `UPLOAD_DIR` or S3-compatible (R2) |
 
-Product conventions live in [cookbook.md](./cookbook.md). This Next.js version may differ from older Next docs — check `node_modules/next/dist/docs/` when unsure.
+> This Next.js version may differ from older docs — check `node_modules/next/dist/docs/` when unsure. Product rules: **[cookbook.md](./cookbook.md)**.
 
 ---
 
-## Quick start (local)
+## Quick start
 
-**Prerequisites:** Node.js 20+, Docker Desktop (Postgres + Redis).
+**Prerequisites:** Node.js **20+**, Docker Desktop (Postgres + Redis).
 
 ```bash
 npm run docker:up
@@ -123,45 +149,61 @@ npm run db:setup
 npm run dev
 ```
 
-Optional background jobs:
+Background jobs (optional for local):
 
 ```bash
 npm run worker
 ```
 
-Open **http://localhost:3000**
+Open **[http://localhost:3000](http://localhost:3000)**
 
 | | |
-|---|---|
+|:---|:---|
 | Demo admin | `admin@demo.local` |
 | Demo password | `password123` |
 | Postgres (Docker) | user / pass / db = `workpilot` |
 
 ### Register a new company
 
-1. Open **Register** on the marketing/login flow  
-2. Create company + admin account  
-3. You land on **`/onboarding`** — brand → timing → invite first employee  
-4. Finish → **Admin dashboard**
+1. Open **Register** and create company + admin  
+2. Complete **`/onboarding`** — Brand → Timing → Invite  
+3. Land on the **Admin** dashboard  
 
-In-app guides (branded):
+In-app guides (branded per company):
 
 - Admin → **How to use** → `/admin/how-to-use`  
 - Employee → **How to use** → `/employee/how-to-use`  
 
+### Install as PWA
+
+- **Chrome / Edge (Android):** menu → Install app / Add to Home screen  
+- **Safari (iOS):** Share → Add to Home Screen  
+
 ---
 
-## Project layout (high level)
+## Documentation
 
-```
-src/app/                 # Next.js routes (admin, employee, onboarding, API)
+| Doc | Purpose |
+|:---|:---|
+| **[HOW_TO_USE.md](./HOW_TO_USE.md)** | Local run & day-to-day usage |
+| **[DEPLOY.md](./DEPLOY.md)** | Production deploy checklist |
+| **[cookbook.md](./cookbook.md)** | Architecture & product rules for builders |
+
+---
+
+## Project layout
+
+```text
+src/app/                 # Routes — admin, employee, onboarding, API
 src/features/            # UI feature modules (forms, wizards, tables)
 src/services/            # Business logic
 src/repositories/        # Prisma data access
 src/jobs/                # BullMQ worker
-src/lib/                 # auth, session, prisma, theme
+src/lib/                 # Auth, session, prisma, theme, tenant
+src/components/          # Shared UI + layout (header, PWA, notifications)
 prisma/schema.prisma     # Data model
-public/sw.js             # PWA service worker
+public/icons/icon.svg    # Product logo / default PWA icon
+public/sw.js             # Service worker
 DEPLOY.md                # Production guide
 ```
 
@@ -181,21 +223,22 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
 ```
 
-See [DEPLOY.md](./DEPLOY.md) for production secrets, Resend, S3, and worker setup.
+Production secrets, Resend, S3/R2, and worker setup → **[DEPLOY.md](./DEPLOY.md)**.
 
 ---
 
 ## Scripts
 
 | Script | What it does |
-|---|---|
+|:---|:---|
 | `npm run dev` | Next.js dev server |
 | `npm run build` / `npm start` | Production web process |
 | `npm run worker` | BullMQ background worker |
-| `npm run docker:up` | Start Postgres + Redis |
+| `npm run docker:up` / `docker:down` | Start / stop Postgres + Redis |
 | `npm run db:setup` | Generate client, push schema, seed demo |
 | `npm run db:studio` | Prisma Studio |
-| `npx tsx scripts/mark-setup-complete.ts` | Mark all companies as past onboarding (ops helper) |
+| `npm run db:seed` | Re-seed demo data |
+| `npm run lint` | ESLint |
 
 ---
 
@@ -204,9 +247,9 @@ See [DEPLOY.md](./DEPLOY.md) for production secrets, Resend, S3, and worker setu
 - Shared database, shared schema  
 - Every business table includes `companyId`  
 - Services always scope queries to the signed-in user’s company  
-- Branding injected as CSS variables before paint  
+- Branding injected as CSS variables **before paint**  
 
-Do not invent a second “theme fork” per client — configure the company row instead.
+Do **not** invent a second theme fork per client — configure the company row instead.
 
 ---
 
@@ -214,27 +257,36 @@ Do not invent a second “theme fork” per client — configure the company row
 
 Full guide: **[DEPLOY.md](./DEPLOY.md)**
 
-Short version:
-
 1. Managed Postgres + Redis  
 2. Set production env (`BETTER_AUTH_URL` = public HTTPS URL)  
 3. `prisma generate` + `db push` (or migrations)  
 4. `npm run build` && `npm start`  
 5. Run **`npm run worker`** as a second process  
 6. Configure Resend (and optionally R2/S3)  
-7. Smoke-test register → onboarding → invite → punch → leave  
+7. Smoke-test: register → onboarding → invite → punch → leave  
 
 ---
 
-## Security notes
+## Security
 
 - Never commit `.env` or live API keys  
 - Change or remove the demo admin before public launch  
 - Offboarded employees lose login until reactivated  
-- Uploads should use private object storage in production when possible  
+- Company admins cannot be offboarded from the UI or API  
+- Prefer private object storage for uploads in production  
 
 ---
 
-## Status
+## Roadmap status
 
-WorkPilot includes Phase 1–2 HR foundations plus payroll, exceptions, digests, PWA, and post-register onboarding. Treat [cookbook.md](./cookbook.md) as the source of truth when extending the product.
+WorkPilot ships **Phase 1–2 HR foundations** plus payroll, exceptions, digests, PWA, and post-register onboarding.
+
+Treat **[cookbook.md](./cookbook.md)** as the source of truth when extending the product.
+
+---
+
+<p align="center">
+  <img src="./public/icons/icon.svg" alt="WorkPilot" width="48" height="48" />
+  <br />
+  <sub><strong>WorkPilot</strong> — white-label HRMS that feels like each company’s own product.</sub>
+</p>
