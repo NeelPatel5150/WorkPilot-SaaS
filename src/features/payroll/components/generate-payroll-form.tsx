@@ -216,7 +216,7 @@ export function GeneratePayrollForm({
                     { label: "Hours worked", value: preview.totalHours },
                     {
                       label: "Saved basic",
-                      value: preview.basicSalary ?? "—",
+                      value: preview.basicSalary ?? "-",
                     },
                   ].map((item) => (
                     <div

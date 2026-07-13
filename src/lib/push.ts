@@ -1,7 +1,7 @@
 import { activityRepo } from "@/repositories/activity.repository";
 
 /**
- * FCM browser push — Phase 2 stub.
+ * FCM browser push - Phase 2 stub.
  * When FIREBASE_* env vars are set, wire firebase-admin here.
  * Until then we log + record activity so the fan-out path stays complete.
  */

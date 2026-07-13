@@ -1,10 +1,14 @@
 import { requireUser } from "@/lib/session";
+import { listLeaveTypes } from "@/services/leave.service";
+import { activityRepo } from "@/repositories/activity.repository";
 import { PageHeader } from "@/components/shared/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandingForm } from "@/features/branding/components/branding-form";
 import { TenantSettingsForm } from "@/features/branding/components/tenant-settings-form";
 import { AvatarUploadCard } from "@/features/profile/components/avatar-setup";
 import { WorkPolicyForm } from "@/features/settings/components/work-policy-form";
+import { LeaveTypesForm } from "@/features/settings/components/leave-types-form";
+import { AuditLogCard } from "@/features/settings/components/audit-log-card";
 
 export default async function AdminSettingsPage() {
   const user = await requireUser();
@@ -15,9 +19,14 @@ export default async function AdminSettingsPage() {
     ? (company.weeklyOffs as number[]).map(Number)
     : [0];
 
+  const [leaveTypes, auditLogs] = await Promise.all([
+    listLeaveTypes(user.companyId!),
+    activityRepo.list(user.companyId!, 100),
+  ]);
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Company branding and tenant details." />
+      <PageHeader title="Settings" description="Company branding, leave types, and audit." />
       <Card>
         <CardHeader>
           <CardTitle>Your avatar</CardTitle>
@@ -52,6 +61,7 @@ export default async function AdminSettingsPage() {
           officeIpAllowlist: company.officeIpAllowlist,
         }}
       />
+      <LeaveTypesForm types={leaveTypes} />
       <BrandingForm
         name={company.name}
         primaryColor={company.primaryColor}
@@ -67,6 +77,7 @@ export default async function AdminSettingsPage() {
         fromEmail={smtp.fromEmail ?? null}
         rootDomain={rootDomain}
       />
+      <AuditLogCard logs={auditLogs} />
     </div>
   );
 }

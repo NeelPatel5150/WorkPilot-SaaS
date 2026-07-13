@@ -11,6 +11,111 @@ import { toastError, toastSuccess } from "@/store/toast";
 
 type Dept = { id: string; name: string };
 
+type CreatedCreds = {
+  employeeCode: string;
+  tempPassword: string;
+  email: string;
+  acceptUrl: string;
+};
+
+function CopyButton({
+  label,
+  value,
+  onCopied,
+}: {
+  label: string;
+  value: string;
+  onCopied?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          onCopied?.();
+          setTimeout(() => setCopied(false), 1600);
+        } catch {
+          toastError("Copy failed", "Select the text and copy manually");
+        }
+      }}
+    >
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
+
+function InviteBackupCard({ creds }: { creds: CreatedCreds }) {
+  const allText = [
+    `Email: ${creds.email}`,
+    `Code: ${creds.employeeCode}`,
+    `Default password: ${creds.tempPassword}`,
+    `Accept link: ${creds.acceptUrl}`,
+  ].join("\n");
+
+  return (
+    <div className="rounded-xl border-2 border-[var(--border)] bg-[linear-gradient(135deg,#eff6ff,#dbeafe)] p-4 shadow-[4px_4px_0_0_var(--border)]">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-sm font-black">Invite sent · backup copy for you</p>
+        <CopyButton
+          label="Copy all"
+          value={allText}
+          onCopied={() => toastSuccess("Copied", "Invite details copied")}
+        />
+      </div>
+
+      <div className="mt-3 space-y-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-[var(--border)] bg-white px-3 py-2">
+          <p>
+            <span className="font-bold">Email:</span>{" "}
+            <span className="break-all">{creds.email}</span>
+          </p>
+          <CopyButton label="Copy" value={creds.email} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-[var(--border)] bg-white px-3 py-2">
+          <p>
+            <span className="font-bold">Code:</span> {creds.employeeCode}
+          </p>
+          <CopyButton label="Copy" value={creds.employeeCode} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-[var(--border)] bg-white px-3 py-2">
+          <p>
+            <span className="font-bold">Default password:</span>{" "}
+            <code className="rounded bg-[var(--muted)] px-2 py-0.5 font-mono font-bold">
+              {creds.tempPassword}
+            </code>
+          </p>
+          <CopyButton label="Copy" value={creds.tempPassword} />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border-2 border-[var(--border)] bg-white px-3 py-2">
+          <p className="min-w-0 flex-1">
+            <span className="font-bold">Accept link:</span>{" "}
+            <a
+              href={creds.acceptUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="break-all font-semibold underline"
+            >
+              {creds.acceptUrl}
+            </a>
+          </p>
+          <CopyButton label="Copy" value={creds.acceptUrl} />
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+        Employee should open the email and click <strong>Accept invite &amp; set password</strong>.
+        This backup is shown once if email delivery is delayed.
+      </p>
+    </div>
+  );
+}
+
 export function CreateEmployeeForm({
   departments,
   nextCode,
@@ -20,11 +125,7 @@ export function CreateEmployeeForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [createdCreds, setCreatedCreds] = useState<{
-    employeeCode: string;
-    tempPassword: string;
-    email: string;
-  } | null>(null);
+  const [createdCreds, setCreatedCreds] = useState<CreatedCreds | null>(null);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,11 +145,9 @@ export function CreateEmployeeForm({
           employeeCode: res.employeeCode,
           tempPassword: res.tempPassword,
           email: res.email,
+          acceptUrl: res.acceptUrl,
         });
-        toastSuccess(
-          "Employee invited",
-          `Invite email sent to ${res.email}`
-        );
+        toastSuccess("Employee invited", `Invite email sent to ${res.email}`);
         form.reset();
       }
     });
@@ -63,11 +162,11 @@ export function CreateEmployeeForm({
         <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-3">
           <div className="space-y-1">
             <Label>First name</Label>
-            <Input name="firstName" required placeholder="Neel" />
+            <Input name="firstName" required placeholder="Enter first name" />
           </div>
           <div className="space-y-1">
             <Label>Last name</Label>
-            <Input name="lastName" required placeholder="Patel" />
+            <Input name="lastName" required placeholder="Enter last name" />
           </div>
           <div className="space-y-1">
             <Label>Employee code (auto)</Label>
@@ -82,19 +181,19 @@ export function CreateEmployeeForm({
               name="email"
               type="email"
               required
-              placeholder="neel@company.com"
+              placeholder="Enter work email"
             />
           </div>
           <div className="space-y-1">
             <Label>Invite</Label>
             <Input
-              value="Branded email + set password"
+              value="Branded email + Accept button"
               readOnly
               disabled
               className="opacity-90"
             />
             <p className="text-xs text-[var(--muted-foreground)]">
-              They get default credentials by email and must set a new password
+              They get an email with an Accept button to set their password
             </p>
           </div>
           <div className="space-y-1">
@@ -108,7 +207,7 @@ export function CreateEmployeeForm({
           </div>
           <div className="space-y-1">
             <Label>Designation</Label>
-            <Input name="designation" placeholder="e.g. Software Engineer" />
+            <Input name="designation" placeholder="Enter designation" />
           </div>
           <div className="space-y-1">
             <Label>Department</Label>
@@ -123,7 +222,7 @@ export function CreateEmployeeForm({
           </div>
           <div className="space-y-1">
             <Label>Phone</Label>
-            <Input name="phone" type="tel" placeholder="+91 98765 43210" />
+            <Input name="phone" type="tel" placeholder="Enter phone number" />
           </div>
           <div className="md:col-span-3 flex flex-col gap-3">
             <Button type="submit" disabled={pending} className="w-fit">
@@ -132,27 +231,7 @@ export function CreateEmployeeForm({
             {error ? (
               <p className="text-sm font-semibold text-[var(--destructive)]">{error}</p>
             ) : null}
-            {createdCreds ? (
-              <div className="rounded-xl border-2 border-[var(--border)] bg-[linear-gradient(135deg,#eff6ff,#dbeafe)] p-4 shadow-[4px_4px_0_0_var(--border)]">
-                <p className="text-sm font-black">Invite sent · backup copy for you</p>
-                <p className="mt-2 text-sm">
-                  <span className="font-bold">Email:</span> {createdCreds.email}
-                </p>
-                <p className="text-sm">
-                  <span className="font-bold">Code:</span> {createdCreds.employeeCode}
-                </p>
-                <p className="text-sm">
-                  <span className="font-bold">Default password:</span>{" "}
-                  <code className="rounded bg-white px-2 py-0.5 font-mono font-bold">
-                    {createdCreds.tempPassword}
-                  </code>
-                </p>
-                <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-                  Employee opens the email → Accept & set new password. Shown here once in
-                  case email delivery is delayed.
-                </p>
-              </div>
-            ) : null}
+            {createdCreds ? <InviteBackupCard creds={createdCreds} /> : null}
           </div>
         </form>
       </CardContent>

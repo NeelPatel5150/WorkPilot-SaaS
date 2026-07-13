@@ -35,7 +35,6 @@ export const adminNav: NavItem[] = [
   { label: "Payroll", href: "/admin/payroll", icon: "chart" },
   { label: "Reports", href: "/admin/reports", icon: "chart" },
   { label: "Notifications", href: "/admin/notifications", icon: "bell" },
-  { label: "Audit", href: "/admin/audit", icon: "settings" },
   { label: "How to use", href: "/admin/how-to-use", icon: "help" },
   { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];

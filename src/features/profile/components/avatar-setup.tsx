@@ -87,8 +87,8 @@ export function AvatarSetupModal({
                     setPreview(null);
                     return;
                   }
-                  if (file.size > 5 * 1024 * 1024) {
-                    setError("Avatar must be under 5MB");
+                  if (file.size > 800 * 1024) {
+                    setError("Avatar must be under 800KB");
                     e.target.value = "";
                     setPreview(null);
                     return;
@@ -181,7 +181,14 @@ export function AvatarUploadCard({
           required
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) setPreview(URL.createObjectURL(file));
+            if (!file) return;
+            if (file.size > 800 * 1024) {
+              setError("Avatar must be under 800KB");
+              e.target.value = "";
+              return;
+            }
+            setError(null);
+            setPreview(URL.createObjectURL(file));
           }}
         />
       </div>

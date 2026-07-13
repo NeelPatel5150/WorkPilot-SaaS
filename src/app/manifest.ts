@@ -32,8 +32,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     name,
     short_name: shortName,
     description: company
-      ? `${company.name} WorkPilot app — punch, leave, payslips.`
-      : "White-label HRMS — attendance, leave, and payroll.",
+      ? `${company.name} WorkPilot app - punch, leave, payslips.`
+      : "White-label HRMS - attendance, leave, and payroll.",
     start_url: "/portal",
     scope: "/",
     display: "standalone",

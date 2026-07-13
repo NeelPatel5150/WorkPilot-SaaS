@@ -46,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const company = await resolveCompany();
   const title = company
     ? `${company.name} · WorkPilot`
-    : "WorkPilot — White-Label HRMS";
+    : "WorkPilot - White-Label HRMS";
   const icons =
     company?.faviconUrl || company?.logoUrl
       ? {
@@ -66,7 +66,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description: company
-      ? `${company.name} WorkPilot portal — punch, leave, payslips`
+      ? `${company.name} WorkPilot portal - punch, leave, payslips`
       : "White-label multi-tenant WorkPilot platform",
     applicationName: company ? `${company.name} Portal` : "WorkPilot",
     appleWebApp: {

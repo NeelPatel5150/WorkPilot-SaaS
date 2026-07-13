@@ -24,19 +24,19 @@ const COPY: Record<
   { title: string; statusLabel: string; message: (company: string) => string }
 > = {
   RESIGNED: {
-    title: "Access closed — resigned",
+    title: "Access closed: resigned",
     statusLabel: "Resigned",
     message: (company) =>
       `Your employment with ${company} is marked as resigned, so portal login is disabled. If this is a mistake, ask your HR admin to reactivate your account.`,
   },
   TERMINATED: {
-    title: "Access closed — terminated",
+    title: "Access closed: terminated",
     statusLabel: "Terminated",
     message: (company) =>
       `Your account with ${company} was terminated, so you cannot sign in. Contact HR if you believe this is incorrect.`,
   },
   ON_NOTICE: {
-    title: "Login paused — notice period",
+    title: "Login paused: notice period",
     statusLabel: "On notice",
     message: (company) =>
       `You're on notice period at ${company}. Portal login stays locked until HR reactivates access.`,
@@ -73,7 +73,7 @@ export async function checkLoginAccess(email: string): Promise<LoginAccessResult
     },
   });
 
-  // Unknown email — let better-auth handle invalid credentials (don't leak accounts)
+  // Unknown email - let better-auth handle invalid credentials (don't leak accounts)
   if (!user) return { allowed: true };
 
   const reason = blockReasonFromStatus(

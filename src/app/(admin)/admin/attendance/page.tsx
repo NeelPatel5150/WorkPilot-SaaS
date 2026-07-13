@@ -17,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatTime } from "@/lib/utils";
-import { AttendanceActions } from "@/features/attendance/components/attendance-actions";
 import {
   AttendanceTabs,
   PayrollFilters,
@@ -56,8 +55,7 @@ export default async function AdminAttendancePage({
     <div className="space-y-6">
       <PageHeader
         title="Attendance"
-        description="Live punches, recent logs, and month-wise timesheets for salary."
-        actions={<AttendanceActions />}
+        description="Team punches, recent logs, and month-wise timesheets for salary."
       />
 
       <AttendanceTabs tab={tab} employeeId={employeeId} month={month} />
@@ -79,7 +77,7 @@ export default async function AdminAttendancePage({
             <CardContent className="space-y-4">
               <p className="text-sm text-[var(--muted-foreground)]">
                 Pick an employee and month to see every day&apos;s check-in / check-out
-                and hours — useful when calculating salary.
+                and hours - useful when calculating salary.
               </p>
               <PayrollFilters
                 employees={employeeOptions}
@@ -147,7 +145,7 @@ async function TodayPanel({
               </TableCell>
               <TableCell>{formatTime(r.checkIn)}</TableCell>
               <TableCell>{formatTime(r.checkOut)}</TableCell>
-              <TableCell>{r.workingHours ?? "—"}</TableCell>
+              <TableCell>{r.workingHours ?? "-"}</TableCell>
               <TableCell>
                 <Badge>{r.status}</Badge>
               </TableCell>
@@ -200,7 +198,7 @@ async function RecentPanel({
               </TableCell>
               <TableCell>{formatTime(r.checkIn)}</TableCell>
               <TableCell>{formatTime(r.checkOut)}</TableCell>
-              <TableCell>{r.workingHours ?? "—"}</TableCell>
+              <TableCell>{r.workingHours ?? "-"}</TableCell>
               <TableCell>
                 <Badge>{r.status}</Badge>
               </TableCell>
@@ -282,8 +280,8 @@ async function PayrollPanel({
                 <TableCell>{formatDate(d.date)}</TableCell>
                 <TableCell>{formatTime(d.checkIn)}</TableCell>
                 <TableCell>{formatTime(d.checkOut)}</TableCell>
-                <TableCell>{d.workingHours ?? "—"}</TableCell>
-                <TableCell>{d.overtimeHours ?? "—"}</TableCell>
+                <TableCell>{d.workingHours ?? "-"}</TableCell>
+                <TableCell>{d.overtimeHours ?? "-"}</TableCell>
                 <TableCell>
                   <Badge
                     className={

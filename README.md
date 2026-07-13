@@ -187,6 +187,7 @@ In-app guides (branded per company):
 |:---|:---|
 | **[HOW_TO_USE.md](./HOW_TO_USE.md)** | Local run & day-to-day usage |
 | **[DEPLOY.md](./DEPLOY.md)** | Production deploy checklist |
+| **[DEPLOY_VERCEL_SUPABASE.md](./DEPLOY_VERCEL_SUPABASE.md)** | Step-by-step Vercel + Supabase go-live |
 | **[cookbook.md](./cookbook.md)** | Architecture & product rules for builders |
 
 ---

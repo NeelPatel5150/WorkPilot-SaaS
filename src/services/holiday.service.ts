@@ -11,6 +11,10 @@ export async function listHolidays(companyId: string) {
   return holidayRepo.list(companyId);
 }
 
+export async function listUpcomingHolidays(companyId: string) {
+  return holidayRepo.listUpcoming(companyId, startOfDayUTC());
+}
+
 export async function createHoliday(
   actor: { id: string; companyId: string; role: UserRole },
   name: string,
@@ -20,6 +24,9 @@ export async function createHoliday(
   const trimmed = name.trim();
   if (!trimmed) throw new ValidationError("Holiday name is required");
   const holidayDate = startOfDayUTC(new Date(date));
+  if (Number.isNaN(holidayDate.getTime())) {
+    throw new ValidationError("Invalid holiday date");
+  }
   const holiday = await holidayRepo.create(actor.companyId, trimmed, holidayDate);
 
   await notifyCompanyUsers(
@@ -29,7 +36,7 @@ export async function createHoliday(
     { channels: ["in_app", "email", "push"] }
   );
 
-  // If the holiday is tomorrow (or today), send the “before” reminder immediately
+  // If the holiday is tomorrow (or today), send the "before" reminder immediately
   const today = startOfDayUTC();
   const tomorrow = startOfDayUTC(new Date(Date.now() + 24 * 60 * 60 * 1000));
   if (
@@ -54,6 +61,54 @@ export async function createHoliday(
     holidayId: holiday.id,
   });
   return holiday;
+}
+
+/** Quiet bulk import for onboarding / CSV / Google Sheet (no per-row spam). */
+export async function importHolidays(
+  actor: { id: string; companyId: string; role: UserRole },
+  rows: { name: string; date: string }[]
+) {
+  assertPermission(actor.role, "settings:manage");
+  if (rows.length === 0) throw new ValidationError("No holidays to import");
+
+  const existing = await holidayRepo.list(actor.companyId);
+  const existingDates = new Set(
+    existing.map((h) => startOfDayUTC(h.date).toISOString().slice(0, 10))
+  );
+
+  const toCreate: { name: string; date: Date }[] = [];
+  const skipped: string[] = [];
+
+  for (const row of rows) {
+    const name = row.name.trim();
+    const date = startOfDayUTC(new Date(row.date));
+    if (!name || Number.isNaN(date.getTime())) {
+      skipped.push(`${row.name || "?"} / ${row.date}`);
+      continue;
+    }
+    const key = date.toISOString().slice(0, 10);
+    if (existingDates.has(key)) {
+      skipped.push(`${name} (${key}) already exists`);
+      continue;
+    }
+    existingDates.add(key);
+    toCreate.push({ name, date });
+  }
+
+  if (toCreate.length === 0) {
+    throw new ValidationError(
+      skipped.length
+        ? `Nothing imported. ${skipped.slice(0, 3).join("; ")}`
+        : "Nothing to import"
+    );
+  }
+
+  await holidayRepo.createMany(actor.companyId, toCreate);
+  await activityRepo.log(actor.companyId, "holiday.imported", actor.id, {
+    count: toCreate.length,
+  });
+
+  return { imported: toCreate.length, skipped: skipped.length };
 }
 
 /** Day-before reminders for upcoming holidays (run from worker). */

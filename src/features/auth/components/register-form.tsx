@@ -44,11 +44,11 @@ export function RegisterForm({
         >
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="companyName">Company name</Label>
-            <Input id="companyName" name="companyName" required placeholder="Acme Pvt Ltd" />
+            <Input id="companyName" name="companyName" required placeholder="Enter company name" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="slug">Subdomain slug</Label>
-            <Input id="slug" name="slug" placeholder="acme" />
+            <Input id="slug" name="slug" placeholder="Enter subdomain (optional)" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="primaryColor">Brand color</Label>
@@ -56,11 +56,11 @@ export function RegisterForm({
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="adminName">Your name</Label>
-            <Input id="adminName" name="adminName" required placeholder="Neel Shah" />
+            <Input id="adminName" name="adminName" required placeholder="Enter your full name" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Work email</Label>
-            <Input id="email" name="email" type="email" required placeholder="you@company.com" />
+            <Input id="email" name="email" type="email" required placeholder="Enter your work email" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>

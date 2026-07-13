@@ -16,7 +16,7 @@ function startOfLocalDay(d = new Date()) {
 export function startNotificationWorker() {
   const url = process.env.REDIS_URL;
   if (!url) {
-    console.info("[worker] Redis not configured — inline delivery only");
+    console.info("[worker] Redis not configured - inline delivery only");
   } else {
     const worker = new Worker<NotificationJobData>(
       "notifications",

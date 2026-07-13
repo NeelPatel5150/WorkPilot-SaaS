@@ -56,7 +56,7 @@ export function TenantSettingsForm({
             <Input
               name="customDomain"
               defaultValue={customDomain ?? ""}
-              placeholder="hr.yourcompany.com"
+              placeholder="Enter custom domain"
             />
             <p className="text-xs text-[var(--muted-foreground)]">
               After saving, point your domain to this app. Verification is DNS-based (active when
@@ -68,12 +68,12 @@ export function TenantSettingsForm({
             <Input
               name="whatsappNumber"
               defaultValue={whatsappNumber ?? ""}
-              placeholder="+14155238886"
+              placeholder="Enter WhatsApp number"
             />
           </div>
           <div className="space-y-1">
             <Label>Email from name</Label>
-            <Input name="fromName" defaultValue={fromName ?? ""} placeholder="Acme HR" />
+            <Input name="fromName" defaultValue={fromName ?? ""} placeholder="Enter sender name" />
           </div>
           <div className="space-y-1 sm:col-span-2">
             <Label>Email from address</Label>
@@ -81,7 +81,7 @@ export function TenantSettingsForm({
               name="fromEmail"
               type="email"
               defaultValue={fromEmail ?? ""}
-              placeholder="hr@yourcompany.com"
+              placeholder="Enter email address"
             />
             <p className="text-xs text-[var(--muted-foreground)]">
               Must be allowed on your Resend domain. Falls back to EMAIL_FROM if empty.

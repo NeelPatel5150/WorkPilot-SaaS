@@ -31,8 +31,14 @@ export function getTenantLoginUrl(company: CompanyUrlFields) {
   return `${getTenantBaseUrl(company)}/login`;
 }
 
-export function getTenantAcceptUrl(company: CompanyUrlFields, email: string) {
-  return `${getTenantBaseUrl(company)}/accept?email=${encodeURIComponent(email)}`;
+export function getTenantAcceptUrl(
+  company: CompanyUrlFields,
+  email: string,
+  token?: string
+) {
+  const params = new URLSearchParams({ email });
+  if (token) params.set("token", token);
+  return `${getTenantBaseUrl(company)}/accept?${params.toString()}`;
 }
 
 export function getPublicBrandIconUrl(

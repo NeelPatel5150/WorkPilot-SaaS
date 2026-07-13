@@ -55,7 +55,7 @@ export default async function AdminExceptionsPage() {
                     {formatTime(r.proposedCheckIn)} → {formatTime(r.proposedCheckOut)}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm">
-                    {r.reason || "—"}
+                    {r.reason || "-"}
                   </TableCell>
                   <TableCell>
                     <Badge>{r.status}</Badge>

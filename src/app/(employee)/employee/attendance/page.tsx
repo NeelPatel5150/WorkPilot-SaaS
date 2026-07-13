@@ -52,7 +52,7 @@ export default async function EmployeeAttendancePage() {
                   <TableCell>{formatDate(r.date)}</TableCell>
                   <TableCell>{formatTime(r.checkIn)}</TableCell>
                   <TableCell>{formatTime(r.checkOut)}</TableCell>
-                  <TableCell>{r.workingHours ?? "—"}</TableCell>
+                  <TableCell>{r.workingHours ?? "-"}</TableCell>
                   <TableCell>
                     <Badge>{r.status}</Badge>
                   </TableCell>

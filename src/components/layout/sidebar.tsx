@@ -39,7 +39,7 @@ export function Sidebar({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            <p className="whitespace-nowrap text-[8px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
               Powered by WorkPilot
             </p>
             <h1 className="truncate text-base font-black leading-tight text-[var(--foreground)]">

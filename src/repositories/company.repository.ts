@@ -31,6 +31,10 @@ export const companyRepo = {
       secondaryColor?: string;
       logoUrl?: string | null;
       faviconUrl?: string | null;
+      logoData?: Buffer | null;
+      logoMime?: string | null;
+      faviconData?: Buffer | null;
+      faviconMime?: string | null;
       customDomain?: string | null;
       whatsappNumber?: string | null;
       smtpConfig?: { fromName?: string; fromEmail?: string } | null;

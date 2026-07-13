@@ -81,7 +81,7 @@ export async function registerCompany(input: {
   });
   if (employee) {
     const year = new Date().getFullYear();
-    const types = await leaveRepo.listTypes(company.id);
+    const types = await leaveRepo.listTypes(company.id, { applicableOnly: true });
     for (const type of types) {
       await leaveRepo.upsertBalance({
         companyId: company.id,

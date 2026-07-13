@@ -128,7 +128,7 @@ export async function createEmployee(
   });
 
   const year = new Date().getFullYear();
-  const types = await leaveRepo.listTypes(actor.companyId);
+  const types = await leaveRepo.listTypes(actor.companyId, { applicableOnly: true });
   for (const type of types) {
     await leaveRepo.upsertBalance({
       companyId: actor.companyId,
@@ -139,6 +139,11 @@ export async function createEmployee(
       used: 0,
     });
   }
+
+  const { createInviteToken } = await import("@/lib/invite-token");
+  const { getTenantAcceptUrl } = await import("@/lib/tenant-url");
+  const inviteToken = await createInviteToken(input.email);
+  const acceptUrl = getTenantAcceptUrl(company, input.email, inviteToken);
 
   await sendEmployeeInviteEmail({
     companyId: actor.companyId,
@@ -155,16 +160,24 @@ export async function createEmployee(
     employeeCode,
     email: input.email,
     tempPassword,
+    inviteToken,
   });
 
   await activityRepo.log(actor.companyId, "employee.created", actor.id, {
     employeeId: employee.id,
   });
 
-  return { employee, employeeCode, tempPassword, email: input.email, inviteSent: true };
+  return {
+    employee,
+    employeeCode,
+    tempPassword,
+    email: input.email,
+    inviteSent: true,
+    acceptUrl,
+  };
 }
 
-export async function getInviteContext(email: string) {
+export async function getInviteContext(email: string, token?: string) {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
     include: {
@@ -173,10 +186,18 @@ export async function getInviteContext(email: string) {
     },
   });
   if (!user?.company || !user.mustChangePassword) return null;
+
+  let tokenValid = false;
+  if (token) {
+    const { verifyInviteToken } = await import("@/lib/invite-token");
+    tokenValid = await verifyInviteToken(email, token);
+  }
+
   return {
     email: user.email,
     name: user.name,
     employeeCode: user.employee?.employeeCode ?? null,
+    tokenValid,
     company: {
       name: user.company.name,
       primaryColor: user.company.primaryColor,
@@ -188,15 +209,13 @@ export async function getInviteContext(email: string) {
 
 export async function acceptEmployeeInvite(input: {
   email: string;
-  tempPassword: string;
+  tempPassword?: string;
+  inviteToken?: string;
   newPassword: string;
 }) {
   const email = input.email.toLowerCase().trim();
   if (input.newPassword.length < 8) {
     throw new ValidationError("New password must be at least 8 characters");
-  }
-  if (input.newPassword === input.tempPassword) {
-    throw new ValidationError("Choose a new password different from the default");
   }
 
   const user = await prisma.user.findUnique({
@@ -212,11 +231,25 @@ export async function acceptEmployeeInvite(input: {
   const account = user.accounts[0];
   if (!account?.password) throw new ValidationError("Account is not ready");
 
-  const ok = await verifyPassword({
-    hash: account.password,
-    password: input.tempPassword,
-  });
-  if (!ok) throw new ValidationError("Default password is incorrect");
+  const { verifyInviteToken, consumeInviteToken } = await import("@/lib/invite-token");
+  const tokenOk = input.inviteToken
+    ? await verifyInviteToken(email, input.inviteToken)
+    : false;
+
+  if (tokenOk) {
+    // Secure invite link: no default password required
+  } else if (input.tempPassword) {
+    if (input.newPassword === input.tempPassword) {
+      throw new ValidationError("Choose a new password different from the default");
+    }
+    const ok = await verifyPassword({
+      hash: account.password,
+      password: input.tempPassword,
+    });
+    if (!ok) throw new ValidationError("Default password is incorrect");
+  } else {
+    throw new ValidationError("Invalid or expired invite link. Use the email button or default password.");
+  }
 
   const hashed = await hashPassword(input.newPassword);
   await prisma.$transaction([
@@ -229,6 +262,8 @@ export async function acceptEmployeeInvite(input: {
       data: { mustChangePassword: false },
     }),
   ]);
+
+  await consumeInviteToken(email);
 
   if (user.companyId) {
     await activityRepo.log(user.companyId, "employee.invite_accepted", user.id, {

@@ -154,7 +154,7 @@ export function LoginForm({
               name="email"
               type="email"
               required
-              placeholder="you@company.com"
+              placeholder="Enter your email"
               autoComplete="email"
             />
           </div>
@@ -167,7 +167,7 @@ export function LoginForm({
               required
               minLength={8}
               autoComplete="current-password"
-              placeholder="Your password"
+              placeholder="Enter your password"
             />
           </div>
           {error ? (

@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function AcceptInvitePage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; token?: string }>;
 }) {
   const sp = await searchParams;
   const email = (sp.email || "").trim().toLowerCase();
-  const invite = email ? await getInviteContext(email) : null;
+  const token = (sp.token || "").trim();
+  const invite = email ? await getInviteContext(email, token || undefined) : null;
 
   return (
     <div
@@ -41,6 +42,8 @@ export default async function AcceptInvitePage({
           companyName={invite.company.name}
           employeeCode={invite.employeeCode}
           primaryColor={invite.company.primaryColor}
+          inviteToken={token || undefined}
+          tokenValid={invite.tokenValid}
         />
       )}
     </div>

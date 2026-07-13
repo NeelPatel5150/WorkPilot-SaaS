@@ -30,7 +30,7 @@ export async function offboardEmployee(
   const status = input.status ?? "RESIGNED";
   if (status === "ACTIVE") throw new ValidationError("Use a non-active status to offboard");
 
-  // Resigned / terminated / on-notice — always revoke portal login
+  // Resigned / terminated / on-notice - always revoke portal login
   await prisma.$transaction([
     prisma.employee.update({
       where: { id: employeeId },

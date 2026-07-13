@@ -2,21 +2,71 @@ import { prisma } from "@/lib/prisma";
 import type { LeaveStatus } from "@/generated/prisma";
 
 export const leaveRepo = {
-  listTypes(companyId: string) {
-    return prisma.leaveType.findMany({ where: { companyId }, orderBy: { name: "asc" } });
+  listTypes(companyId: string, opts?: { applicableOnly?: boolean }) {
+    return prisma.leaveType.findMany({
+      where: {
+        companyId,
+        ...(opts?.applicableOnly ? { isApplicable: true } : {}),
+      },
+      orderBy: { name: "asc" },
+    });
   },
-  createType(companyId: string, name: string, defaultDays: number, requiresProof = false) {
+  findType(companyId: string, id: string) {
+    return prisma.leaveType.findFirst({ where: { id, companyId } });
+  },
+  createType(
+    companyId: string,
+    data: {
+      name: string;
+      code?: string | null;
+      defaultDays: number;
+      requiresProof?: boolean;
+      carryForward?: boolean;
+      maxCarryDays?: number;
+      sandwichRule?: boolean;
+      isApplicable?: boolean;
+    }
+  ) {
     return prisma.leaveType.create({
-      data: { companyId, name, defaultDays, requiresProof },
+      data: {
+        companyId,
+        name: data.name,
+        code: data.code ?? null,
+        defaultDays: data.defaultDays,
+        requiresProof: data.requiresProof ?? false,
+        carryForward: data.carryForward ?? false,
+        maxCarryDays: data.maxCarryDays ?? 0,
+        sandwichRule: data.sandwichRule ?? false,
+        isApplicable: data.isApplicable ?? true,
+      },
+    });
+  },
+  updateType(
+    companyId: string,
+    id: string,
+    data: {
+      name?: string;
+      code?: string | null;
+      defaultDays?: number;
+      requiresProof?: boolean;
+      carryForward?: boolean;
+      maxCarryDays?: number;
+      sandwichRule?: boolean;
+      isApplicable?: boolean;
+    }
+  ) {
+    return prisma.leaveType.updateMany({
+      where: { id, companyId },
+      data,
     });
   },
   seedDefaultTypes(companyId: string) {
     const defaults = [
-      { name: "Casual Leave", code: "CL", defaultDays: 12, sandwichRule: true, carryForward: false },
-      { name: "Sick Leave", code: "SL", defaultDays: 10, sandwichRule: false, carryForward: false },
-      { name: "Earned Leave", code: "EL", defaultDays: 15, sandwichRule: true, carryForward: true, maxCarryDays: 30 },
-      { name: "WFH", code: "WFH", defaultDays: 24, sandwichRule: false, carryForward: false },
-      { name: "Comp Off", code: "CO", defaultDays: 0, sandwichRule: false, carryForward: false },
+      { name: "Casual Leave", code: "CL", defaultDays: 12, sandwichRule: true, carryForward: false, isApplicable: true },
+      { name: "Sick Leave", code: "SL", defaultDays: 10, sandwichRule: false, carryForward: false, isApplicable: true },
+      { name: "Earned Leave", code: "EL", defaultDays: 15, sandwichRule: true, carryForward: true, maxCarryDays: 30, isApplicable: true },
+      { name: "WFH", code: "WFH", defaultDays: 24, sandwichRule: false, carryForward: false, isApplicable: true },
+      { name: "Comp Off", code: "CO", defaultDays: 0, sandwichRule: false, carryForward: false, isApplicable: true },
     ];
     return prisma.leaveType.createMany({
       data: defaults.map((d) => ({ companyId, ...d })),

@@ -39,7 +39,7 @@ export function BrandingForm({
               const res = await updateBrandingAction(fd);
               if (res && "error" in res) setMessage(res.error);
               else {
-                setMessage("Saved — refresh to see theme, logo, and favicon.");
+                setMessage("Saved. Refresh to see theme, logo, and favicon.");
                 window.setTimeout(() => window.location.reload(), 600);
               }
             });

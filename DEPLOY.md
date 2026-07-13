@@ -186,7 +186,7 @@ Terminate TLS with Caddy/Nginx; proxy to `127.0.0.1:3000`.
 - [ ] HTTPS only; HTTP redirects to HTTPS
 - [ ] Fresh `BETTER_AUTH_SECRET`
 - [ ] Demo seed account disabled or password changed (`admin@demo.local`)
-- [ ] Uploads directory or S3 bucket is not publicly listable
+- [ ] Uploads: avatars / logos / documents use DB storage (or S3/R2 if configured)
 
 ### Product
 

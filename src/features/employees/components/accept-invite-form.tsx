@@ -15,11 +15,15 @@ export function AcceptInviteForm({
   companyName,
   employeeCode,
   primaryColor,
+  inviteToken,
+  tokenValid,
 }: {
   email: string;
   companyName: string;
   employeeCode: string | null;
   primaryColor: string;
+  inviteToken?: string;
+  tokenValid: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +37,9 @@ export function AcceptInviteForm({
         </p>
         <CardTitle>Accept invitation</CardTitle>
         <CardDescription>
-          Your default credentials were emailed to you. Enter them here, then choose a new
-          password for login.
+          {tokenValid
+            ? "Your invite link is verified. Choose a new password to finish setup."
+            : "Enter the default password from your invite email, then choose a new password."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -52,9 +57,15 @@ export function AcceptInviteForm({
               <span className="font-bold">Employee code:</span> {employeeCode}
             </p>
           ) : null}
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            Use the default password from your invite email.
-          </p>
+          {tokenValid ? (
+            <p className="mt-1 text-xs font-semibold text-[var(--success)]">
+              Secure invite link verified
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+              Use the default password from your invite email.
+            </p>
+          )}
         </div>
 
         <form
@@ -85,22 +96,27 @@ export function AcceptInviteForm({
                 router.push("/login");
                 return;
               }
-              toastSuccess("Welcome", "Your password is set — opening portal…");
+              toastSuccess("Welcome", "Your password is set. Opening portal…");
               window.location.assign("/portal");
             });
           }}
         >
           <input type="hidden" name="email" value={email} />
-          <div className="space-y-2">
-            <Label htmlFor="tempPassword">Default password (from email)</Label>
-            <Input
-              id="tempPassword"
-              name="tempPassword"
-              type="password"
-              required
-              placeholder="From invite email"
-            />
-          </div>
+          {inviteToken ? (
+            <input type="hidden" name="inviteToken" value={inviteToken} />
+          ) : null}
+          {!tokenValid ? (
+            <div className="space-y-2">
+              <Label htmlFor="tempPassword">Default password (from email)</Label>
+              <Input
+                id="tempPassword"
+                name="tempPassword"
+                type="password"
+                required
+                placeholder="Enter password from invite email"
+              />
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="newPassword">New password</Label>
             <Input
@@ -109,7 +125,7 @@ export function AcceptInviteForm({
               type="password"
               required
               minLength={8}
-              placeholder="Choose a strong password"
+              placeholder="Enter new password"
             />
           </div>
           <div className="space-y-2">
@@ -120,7 +136,7 @@ export function AcceptInviteForm({
               type="password"
               required
               minLength={8}
-              placeholder="Repeat new password"
+              placeholder="Confirm new password"
             />
           </div>
           {error ? (

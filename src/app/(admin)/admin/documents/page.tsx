@@ -52,7 +52,7 @@ export default async function AdminDocumentsPage() {
                       : "Company-wide"}
                   </TableCell>
                   <TableCell>
-                    {d.expiresAt ? formatDate(d.expiresAt) : "—"}
+                    {d.expiresAt ? formatDate(d.expiresAt) : "-"}
                   </TableCell>
                   <TableCell>{formatDate(d.createdAt)}</TableCell>
                   <TableCell className="text-right">

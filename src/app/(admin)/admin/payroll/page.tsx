@@ -51,7 +51,7 @@ export default async function AdminPayrollPage({
       />
       {locked ? (
         <p className="rounded-xl border-2 border-[var(--border)] bg-white px-4 py-3 text-sm font-bold">
-          {m}/{y} is locked — no new edits.
+          {m}/{y} is locked - no new edits.
         </p>
       ) : null}
       <GeneratePayrollForm defaultMonth={monthVal} employees={employeeOptions} />

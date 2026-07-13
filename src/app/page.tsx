@@ -68,8 +68,8 @@ export default async function HomePage() {
           </h1>
           <p className="mt-6 max-w-xl text-lg text-[var(--muted-foreground)] md:text-xl">
             {brand
-              ? `Your branded portal for attendance, leave, payroll, and people — powered by WorkPilot.`
-              : `Launch your branded WorkPilot portal — attendance, leave, payroll, and employees — on one shared codebase.`}
+              ? `Your branded portal for attendance, leave, payroll, and people - powered by WorkPilot.`
+              : `Launch your branded WorkPilot portal - attendance, leave, payroll, and employees - on one shared codebase.`}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/register">
@@ -95,7 +95,7 @@ export default async function HomePage() {
             },
             {
               title: "Admin + Employee",
-              body: "Two portals, one app — role-based access for HR and teams.",
+              body: "Two portals, one app - role-based access for HR and teams.",
             },
           ].map((f) => (
             <div key={f.title} className="nb-card bg-white p-5">

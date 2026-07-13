@@ -54,6 +54,9 @@ export async function checkIn(
   actor: { id: string; companyId: string; role: UserRole },
   opts?: { ip?: string; lat?: number; lng?: number }
 ) {
+  if (actor.role === "COMPANY_ADMIN" || actor.role === "SUPER_ADMIN") {
+    throw new ForbiddenError("Admins cannot check in. Use an employee or HR account to punch.");
+  }
   assertPermission(actor.role, "attendance:mark");
   const employee = await employeeRepo.findByUserId(actor.companyId, actor.id);
   if (!employee) throw new NotFoundError("Employee profile not found");
@@ -66,7 +69,7 @@ export async function checkIn(
   const date = startOfDayUTC(now);
 
   if (isWeeklyOff(policy, date)) {
-    throw new ValidationError("Today is a weekly off — request an exception if you worked");
+    throw new ValidationError("Today is a weekly off. Request an exception if you worked");
   }
 
   if (!ipAllowed(policy, opts?.ip)) {
@@ -124,6 +127,9 @@ export async function checkOut(
   actor: { id: string; companyId: string; role: UserRole },
   opts?: { lat?: number; lng?: number }
 ) {
+  if (actor.role === "COMPANY_ADMIN" || actor.role === "SUPER_ADMIN") {
+    throw new ForbiddenError("Admins cannot check out. Use an employee or HR account to punch.");
+  }
   assertPermission(actor.role, "attendance:mark");
   const employee = await employeeRepo.findByUserId(actor.companyId, actor.id);
   if (!employee) throw new NotFoundError("Employee profile not found");

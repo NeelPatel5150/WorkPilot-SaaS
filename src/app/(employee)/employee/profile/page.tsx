@@ -38,14 +38,14 @@ export default async function EmployeeProfilePage() {
               </p>
               <p>
                 <span className="font-bold">Designation:</span>{" "}
-                {employee.designation ?? "—"}
+                {employee.designation ?? "-"}
               </p>
               <p>
-                <span className="font-bold">Phone:</span> {employee.phone ?? "—"}
+                <span className="font-bold">Phone:</span> {employee.phone ?? "-"}
               </p>
               <p>
                 <span className="font-bold">Joined:</span>{" "}
-                {employee.joiningDate ? formatDate(employee.joiningDate) : "—"}
+                {employee.joiningDate ? formatDate(employee.joiningDate) : "-"}
               </p>
               <p>
                 <span className="font-bold">Status:</span> {employee.employmentStatus}

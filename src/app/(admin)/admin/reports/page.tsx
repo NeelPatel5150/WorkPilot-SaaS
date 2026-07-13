@@ -17,11 +17,10 @@ const exports = [
 export default async function AdminReportsPage() {
   const user = await requireUser();
   const companyId = user.companyId!;
-  const [employees, present, pending, types] = await Promise.all([
+  const [employees, present, pending] = await Promise.all([
     employeeRepo.count(companyId),
     attendanceRepo.countPresentToday(companyId),
     leaveRepo.countPending(companyId),
-    leaveRepo.listTypes(companyId),
   ]);
 
   return (
@@ -61,25 +60,6 @@ export default async function AdminReportsPage() {
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Leave types configured</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {types.map((t) => (
-              <li
-                key={t.id}
-                className="flex justify-between border-b-2 border-[var(--border)] py-2 text-sm"
-              >
-                <span className="font-bold">{t.name}</span>
-                <span>{t.defaultDays} days / year</span>
-              </li>
-            ))}
-          </ul>
         </CardContent>
       </Card>
     </div>

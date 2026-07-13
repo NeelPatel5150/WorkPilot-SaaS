@@ -10,7 +10,7 @@ export type TenantContext = {
 
 /**
  * Sole reader of tenant request headers set by proxy.ts.
- * Every service/repository call takes companyId explicitly — do not re-derive.
+ * Every service/repository call takes companyId explicitly - do not re-derive.
  */
 export async function getCurrentTenant(): Promise<TenantContext | null> {
   const h = await headers();

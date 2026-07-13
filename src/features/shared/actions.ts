@@ -98,6 +98,7 @@ export async function createEmployeeAction(formData: FormData) {
       tempPassword: created.tempPassword,
       email: created.email,
       inviteSent: created.inviteSent,
+      acceptUrl: created.acceptUrl,
     };
   } catch (error) {
     return toActionError(error);
@@ -246,6 +247,10 @@ export async function updateBrandingAction(formData: FormData) {
       secondaryColor?: string;
       logoUrl?: string | null;
       faviconUrl?: string | null;
+      logoData?: Buffer | null;
+      logoMime?: string | null;
+      faviconData?: Buffer | null;
+      faviconMime?: string | null;
     } = {
       name: String(formData.get("name") || user.company!.name),
       primaryColor: String(formData.get("primaryColor") || user.company!.primaryColor),
@@ -254,18 +259,21 @@ export async function updateBrandingAction(formData: FormData) {
       ),
     };
 
-    const { saveUpload } = await import("@/lib/storage");
     const logo = formData.get("logo");
     if (logo instanceof File && logo.size > 0) {
       if (logo.size > 2 * 1024 * 1024) return { error: "Logo must be under 2MB" };
-      const saved = await saveUpload(logo, companyId);
-      patch.logoUrl = saved.fileUrl;
+      const buf = Buffer.from(await logo.arrayBuffer());
+      patch.logoData = buf;
+      patch.logoMime = logo.type || "image/png";
+      patch.logoUrl = `/api/brand/icon?kind=logo&companyId=${companyId}&v=${Date.now()}`;
     }
     const favicon = formData.get("favicon");
     if (favicon instanceof File && favicon.size > 0) {
       if (favicon.size > 512 * 1024) return { error: "Favicon must be under 512KB" };
-      const saved = await saveUpload(favicon, companyId);
-      patch.faviconUrl = saved.fileUrl;
+      const buf = Buffer.from(await favicon.arrayBuffer());
+      patch.faviconData = buf;
+      patch.faviconMime = favicon.type || "image/png";
+      patch.faviconUrl = `/api/brand/icon?kind=favicon&companyId=${companyId}&v=${Date.now()}`;
     }
 
     await companyRepo.updateBranding(companyId, patch);
@@ -339,9 +347,60 @@ export async function createHolidayAction(formData: FormData) {
       String(formData.get("date") || "")
     );
     revalidatePath("/admin/holidays");
+    revalidatePath("/employee/leaves");
     revalidatePath("/admin/notifications");
     revalidatePath("/employee/notifications");
     return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function importHolidaysAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { importHolidays } = await import("@/services/holiday.service");
+    const {
+      parseHolidayImportText,
+      fetchGoogleSheetCsv,
+    } = await import("@/lib/holiday-import");
+
+    let text = String(formData.get("csvText") || "").trim();
+    const sheetUrl = String(formData.get("sheetUrl") || "").trim();
+    const file = formData.get("csvFile");
+
+    if (!text && file instanceof File && file.size > 0) {
+      text = await file.text();
+    }
+    if (!text && sheetUrl) {
+      text = await fetchGoogleSheetCsv(sheetUrl);
+    }
+    if (!text) {
+      return { error: "Paste CSV, upload a file, or add a Google Sheet link" };
+    }
+
+    const parsed = parseHolidayImportText(text);
+    if (parsed.rows.length === 0) {
+      return {
+        error:
+          parsed.errors[0] ||
+          "No valid rows. Use columns: name, date (YYYY-MM-DD or DD/MM/YYYY)",
+      };
+    }
+
+    const result = await importHolidays(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      parsed.rows
+    );
+    revalidatePath("/admin/holidays");
+    revalidatePath("/employee/leaves");
+    revalidatePath("/onboarding");
+    return {
+      success: true as const,
+      imported: result.imported,
+      skipped: result.skipped,
+      parseErrors: parsed.errors.slice(0, 5),
+    };
   } catch (error) {
     return toActionError(error);
   }
@@ -435,6 +494,7 @@ export async function uploadAvatarAction(formData: FormData) {
     revalidatePath("/employee/dashboard");
     revalidatePath("/employee/profile");
     revalidatePath("/admin/settings");
+    revalidatePath("/admin/employees");
     return { success: true, image };
   } catch (error) {
     return toActionError(error);
@@ -446,7 +506,8 @@ export async function acceptInviteAction(formData: FormData) {
     const { acceptEmployeeInvite } = await import("@/services/employee.service");
     const result = await acceptEmployeeInvite({
       email: String(formData.get("email") || ""),
-      tempPassword: String(formData.get("tempPassword") || ""),
+      tempPassword: String(formData.get("tempPassword") || "") || undefined,
+      inviteToken: String(formData.get("inviteToken") || "") || undefined,
       newPassword: String(formData.get("newPassword") || ""),
     });
     return { success: true as const, email: result.email };
@@ -560,6 +621,55 @@ export async function updateWorkPolicyAction(formData: FormData) {
       }
     );
     revalidatePath("/admin/settings");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateLeaveTypeAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateLeaveType } = await import("@/services/leave.service");
+    await updateLeaveType(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      String(formData.get("id") || ""),
+      {
+        name: String(formData.get("name") || ""),
+        code: String(formData.get("code") || "") || null,
+        defaultDays: Number(formData.get("defaultDays")),
+        maxCarryDays: Number(formData.get("maxCarryDays") || 0),
+        requiresProof: formData.get("requiresProof") === "on",
+        carryForward: formData.get("carryForward") === "on",
+        sandwichRule: formData.get("sandwichRule") === "on",
+        isApplicable: formData.get("isApplicable") === "on",
+      }
+    );
+    revalidatePath("/admin/settings");
+    revalidatePath("/employee/leaves");
+    revalidatePath("/employee/dashboard");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function createLeaveTypeAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { createLeaveType } = await import("@/services/leave.service");
+    await createLeaveType(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      {
+        name: String(formData.get("name") || ""),
+        code: String(formData.get("code") || "") || null,
+        defaultDays: Number(formData.get("defaultDays") || 0),
+        isApplicable: formData.get("isApplicable") === "on",
+      }
+    );
+    revalidatePath("/admin/settings");
+    revalidatePath("/employee/leaves");
+    revalidatePath("/employee/dashboard");
     return { success: true };
   } catch (error) {
     return toActionError(error);

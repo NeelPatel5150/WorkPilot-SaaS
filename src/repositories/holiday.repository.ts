@@ -7,8 +7,20 @@ export const holidayRepo = {
       orderBy: { date: "asc" },
     });
   },
+  listUpcoming(companyId: string, fromDate: Date) {
+    return prisma.holiday.findMany({
+      where: { companyId, date: { gte: fromDate } },
+      orderBy: { date: "asc" },
+    });
+  },
   create(companyId: string, name: string, date: Date) {
     return prisma.holiday.create({ data: { companyId, name, date } });
+  },
+  createMany(companyId: string, rows: { name: string; date: Date }[]) {
+    if (rows.length === 0) return { count: 0 };
+    return prisma.holiday.createMany({
+      data: rows.map((r) => ({ companyId, name: r.name, date: r.date })),
+    });
   },
   delete(companyId: string, id: string) {
     return prisma.holiday.deleteMany({ where: { id, companyId } });

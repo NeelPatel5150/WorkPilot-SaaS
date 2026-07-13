@@ -73,7 +73,7 @@ export function DocumentForms({ deleteId }: { deleteId?: string }) {
           </Button>
         </form>
         <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-          Policies, IDs, contracts — HR gets alerts before expiry.
+          Policies, IDs, contracts. HR gets alerts before expiry.
         </p>
         {error ? (
           <p className="mt-2 text-sm font-semibold text-[var(--destructive)]">{error}</p>

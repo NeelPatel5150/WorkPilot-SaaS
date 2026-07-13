@@ -1,6 +1,8 @@
 import { requireUser } from "@/lib/session";
 import { listLeaveTypes, listMyLeaves, myBalances } from "@/services/leave.service";
 import { listCoverCandidates } from "@/services/employee.service";
+import { listUpcomingHolidays } from "@/services/holiday.service";
+import { getWorkPolicy } from "@/services/policy.service";
 import { PageHeader, EmptyState } from "@/components/shared/page";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,17 +14,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/utils";
+import { formatDate, startOfDayUTC } from "@/lib/utils";
 import { ApplyLeaveForm } from "@/features/leaves/components/apply-leave-form";
+import { EmployeeHolidayList } from "@/features/holidays/components/employee-holiday-list";
 
 export default async function EmployeeLeavesPage() {
   const user = await requireUser();
-  const [types, requests, balances, coverOptions] = await Promise.all([
-    listLeaveTypes(user.companyId!),
+  const [types, requests, balances, coverOptions, holidays, policy] = await Promise.all([
+    listLeaveTypes(user.companyId!, { applicableOnly: true }),
     listMyLeaves(user.companyId!, user.id, user.role),
     myBalances(user.companyId!, user.id),
     listCoverCandidates(user.companyId!, user.id),
+    listUpcomingHolidays(user.companyId!),
+    getWorkPolicy(user.companyId!),
   ]);
+
+  const holidayDates = holidays.map((h) =>
+    startOfDayUTC(h.date).toISOString().slice(0, 10)
+  );
 
   return (
     <div className="space-y-6">
@@ -38,7 +47,15 @@ export default async function EmployeeLeavesPage() {
           </Card>
         ))}
       </div>
-      <ApplyLeaveForm types={types} coverOptions={coverOptions} />
+
+      <EmployeeHolidayList holidays={holidays} />
+
+      <ApplyLeaveForm
+        types={types}
+        coverOptions={coverOptions}
+        holidayDates={holidayDates}
+        weeklyOffs={policy.weeklyOffs}
+      />
       {requests.length === 0 ? (
         <EmptyState title="No requests" description="Submit a leave request above." />
       ) : (
@@ -62,7 +79,7 @@ export default async function EmployeeLeavesPage() {
                   <TableCell>
                     <Badge>{r.status}</Badge>
                   </TableCell>
-                  <TableCell>{r.reason ?? "—"}</TableCell>
+                  <TableCell>{r.reason ?? "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -12,7 +12,7 @@ export function AuthBrandHeader({
   if (!brand) {
     return (
       <div className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+        <p className="whitespace-nowrap text-[8px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
           Powered by WorkPilot
         </p>
         <h1 className="mt-1 text-2xl font-black">{fallbackTitle}</h1>
@@ -41,7 +41,7 @@ export function AuthBrandHeader({
           {brand.name}
         </p>
         <h1 className="text-xl font-black leading-tight">{fallbackTitle}</h1>
-        <p className="text-[10px] font-semibold text-[var(--muted-foreground)]">
+        <p className="whitespace-nowrap text-[8px] font-semibold text-[var(--muted-foreground)]">
           Powered by WorkPilot
         </p>
       </div>

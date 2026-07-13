@@ -86,7 +86,7 @@ export function ExceptionForms() {
             <Label>Reason</Label>
             <Textarea
               name="reason"
-              placeholder="e.g. Phone died — punched in on paper register at 9:15"
+              placeholder="e.g. Phone died, punched in on paper register at 9:15"
             />
           </div>
           <div className="md:col-span-2 flex items-center gap-3">

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastError, toastSuccess } from "@/store/toast";
+import { HolidaySetupPanel } from "@/features/holidays/components/holiday-setup-panel";
 
 const WEEKDAYS = [
   { value: 0, label: "Sun" },
@@ -37,7 +38,12 @@ type CompanySeed = {
 const STEPS = [
   { id: 1, title: "Brand", blurb: "Logo & colors so the portal looks like your company." },
   { id: 2, title: "Timing", blurb: "Office start time, grace, and weekly offs." },
-  { id: 3, title: "Team", blurb: "Invite your first employee (optional but recommended)." },
+  {
+    id: 3,
+    title: "Holidays",
+    blurb: "Import a holiday list (CSV / Google Sheet), enter manually, or skip.",
+  },
+  { id: 4, title: "Team", blurb: "Invite your first employee (optional but recommended)." },
 ] as const;
 
 export function OnboardingWizard({ company }: { company: CompanySeed }) {
@@ -76,7 +82,7 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
         </p>
         <h1 className="mt-1 text-3xl font-black tracking-tight">Welcome to WorkPilot</h1>
         <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Three quick steps — brand, work timing, then invite someone.
+          Three quick steps for brand and timing, then holidays and your first invite.
         </p>
         <ol className="mt-5 flex flex-wrap gap-2">
           {STEPS.map((s) => (
@@ -124,7 +130,7 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
           >
             <div className="space-y-1 sm:col-span-2">
               <Label>Company display name</Label>
-              <Input name="name" required defaultValue={company.name} placeholder="Acme Pvt Ltd" />
+              <Input name="name" required defaultValue={company.name} placeholder="Enter company name" />
             </div>
             <div className="space-y-1">
               <Label>Primary color</Label>
@@ -173,7 +179,7 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
             }}
           >
             <div className="space-y-1">
-              <Label>Start hour (0–23)</Label>
+              <Label>Start hour (0-23)</Label>
               <Input
                 name="workStartHour"
                 type="number"
@@ -252,6 +258,14 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
         ) : null}
 
         {step === 3 ? (
+          <HolidaySetupPanel
+            onBack={() => setStep(2)}
+            onDone={() => setStep(4)}
+            onSkip={() => setStep(4)}
+          />
+        ) : null}
+
+        {step === 4 ? (
           <form
             className="mt-5 grid gap-4 sm:grid-cols-2"
             onSubmit={(e) => {
@@ -265,34 +279,34 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
                   toastError("Invite failed", res.error);
                   return;
                 }
-                toastSuccess("Employee invited", "They’ll get an email to set password.");
+                toastSuccess("Employee invited", "They will get an email to set password.");
                 finish(false);
               });
             }}
           >
             <div className="space-y-1">
               <Label>First name</Label>
-              <Input name="firstName" required placeholder="Neel" />
+              <Input name="firstName" required placeholder="Enter first name" />
             </div>
             <div className="space-y-1">
               <Label>Last name</Label>
-              <Input name="lastName" required placeholder="Patel" />
+              <Input name="lastName" required placeholder="Enter last name" />
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label>Work email</Label>
-              <Input name="email" type="email" required placeholder="neel@company.com" />
+              <Input name="email" type="email" required placeholder="Enter work email" />
             </div>
             <div className="space-y-1">
               <Label>Designation</Label>
-              <Input name="designation" placeholder="e.g. Engineer" />
+              <Input name="designation" placeholder="Enter designation" />
             </div>
             <div className="space-y-1">
               <Label>Phone</Label>
-              <Input name="phone" type="tel" placeholder="+91 98765 43210" />
+              <Input name="phone" type="tel" placeholder="Enter phone number" />
             </div>
             <input type="hidden" name="role" value="EMPLOYEE" />
             <div className="sm:col-span-2 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(2)}>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setStep(3)}>
                 Back
               </Button>
               <Button type="submit" disabled={pending}>

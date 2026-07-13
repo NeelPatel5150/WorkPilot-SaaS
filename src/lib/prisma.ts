@@ -5,15 +5,20 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-/** Models added after early MVP — Turbopack can keep an old client without these. */
+/** Models added after early MVP - Turbopack can keep an old client without these. */
 const REQUIRED_DELEGATES = [
   "salarySlip",
   "payrollMonthLock",
   "attendanceException",
 ] as const;
 
-/** Fields added to existing models — stale clients still have the model but reject these args. */
-const REQUIRED_COMPANY_FIELDS = ["setupComplete"] as const;
+/** Fields added to existing models - stale clients still have the model but reject these args. */
+const REQUIRED_MODEL_FIELDS = {
+  Company: ["setupComplete", "logoData"],
+  LeaveType: ["isApplicable"],
+  User: ["avatarData"],
+  Document: ["fileData"],
+} as const;
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
@@ -37,23 +42,30 @@ function clientHasRequiredDelegates(client: PrismaClient) {
   );
 }
 
-function clientHasRequiredCompanyFields(client: PrismaClient) {
+function clientHasRequiredModelFields(client: PrismaClient) {
   const runtime = client as unknown as {
     _runtimeDataModel?: {
-      models?: { Company?: { fields?: { name: string }[] } };
+      models?: Record<string, { fields?: { name: string }[] }>;
     };
   };
-  const fields = runtime._runtimeDataModel?.models?.Company?.fields;
-  if (!fields) return false;
-  return REQUIRED_COMPANY_FIELDS.every((name) =>
-    fields.some((f) => f.name === name)
+  const models = runtime._runtimeDataModel?.models;
+  if (!models) return false;
+
+  return (Object.keys(REQUIRED_MODEL_FIELDS) as (keyof typeof REQUIRED_MODEL_FIELDS)[]).every(
+    (modelName) => {
+      const fields = models[modelName]?.fields;
+      if (!fields) return false;
+      return REQUIRED_MODEL_FIELDS[modelName].every((name) =>
+        fields.some((f) => f.name === name)
+      );
+    }
   );
 }
 
 function clientIsCurrent(client: PrismaClient) {
   return (
     clientHasRequiredDelegates(client) &&
-    clientHasRequiredCompanyFields(client)
+    clientHasRequiredModelFields(client)
   );
 }
 

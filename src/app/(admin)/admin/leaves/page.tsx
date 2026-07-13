@@ -53,7 +53,7 @@ export default async function AdminLeavesPage() {
                     {r.status === "PENDING" ? (
                       <LeaveDecisionButtons requestId={r.id} />
                     ) : (
-                      "—"
+                      "-"
                     )}
                   </TableCell>
                 </TableRow>

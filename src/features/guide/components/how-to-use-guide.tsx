@@ -20,7 +20,7 @@ const ADMIN_STEPS = [
   {
     icon: Settings,
     title: "Brand your portal",
-    body: "Settings → logo, colors, domain. The whole app (and installable app icon) follows your brand.",
+    body: "Settings → logo, colors, leave types, domain, and audit log. The whole app follows your brand.",
   },
   {
     icon: Users,
@@ -35,7 +35,7 @@ const ADMIN_STEPS = [
   {
     icon: CalendarDays,
     title: "Approve leave & exceptions",
-    body: "Leaves and Exceptions queues — managers can approve their team; HR/admin sees all.",
+    body: "Leaves and Exceptions queues. Managers can approve their team; HR/admin sees all.",
   },
   {
     icon: Wallet,
@@ -63,12 +63,12 @@ const EMPLOYEE_STEPS = [
   {
     icon: CalendarDays,
     title: "Apply leave",
-    body: "Leaves → pick type (CL/SL/EL…), dates, half-day if needed, who covers — then submit for approval.",
+    body: "Leaves → pick type (CL/SL/EL…), dates, half-day if needed, who covers, then submit for approval.",
   },
   {
     icon: ShieldCheck,
     title: "Fix a missed punch",
-    body: "Forgot punch or missing checkout? Request an attendance exception — admin/manager reviews it.",
+    body: "Forgot punch or missing checkout? Request an attendance exception. Admin/manager reviews it.",
   },
   {
     icon: FileText,
@@ -132,7 +132,7 @@ export function HowToUseGuide({
             </h1>
             <p className="mt-2 max-w-xl text-sm font-medium text-[var(--muted-foreground)] sm:text-base">
               {audience === "admin"
-                ? "Quick map of what each admin screen is for — from branding to payroll lock."
+                ? "Quick map of what each admin screen is for, from branding to payroll lock."
                 : "Field-friendly guide: install the app, punch in, apply leave, and track payslips."}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -216,7 +216,7 @@ export function HowToUseGuide({
         </p>
       ) : (
         <p className="text-center text-xs text-[var(--muted-foreground)]">
-          Managers and HR use a different portal — ask admin if you need access.
+          Managers and HR use a different portal - ask admin if you need access.
           <span className="hidden"> {otherHref}</span>
         </p>
       )}

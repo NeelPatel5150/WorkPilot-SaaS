@@ -11,7 +11,17 @@ export const documentRepo = {
             ? { employeeId: null }
             : { OR: [{ employeeId }, { employeeId: null }] }),
       },
-      include: { employee: true },
+      select: {
+        id: true,
+        companyId: true,
+        employeeId: true,
+        name: true,
+        fileUrl: true,
+        fileMime: true,
+        expiresAt: true,
+        createdAt: true,
+        employee: true,
+      },
       orderBy: { createdAt: "desc" },
     });
   },
@@ -20,12 +30,28 @@ export const documentRepo = {
     employeeId?: string | null;
     name: string;
     fileUrl: string;
+    fileData?: Buffer;
+    fileMime?: string;
     expiresAt?: Date | null;
   }) {
     return prisma.document.create({ data });
   },
   findById(companyId: string, id: string) {
     return prisma.document.findFirst({ where: { id, companyId } });
+  },
+  findFileById(companyId: string, id: string) {
+    return prisma.document.findFirst({
+      where: { id, companyId },
+      select: {
+        id: true,
+        name: true,
+        fileUrl: true,
+        fileData: true,
+        fileMime: true,
+        companyId: true,
+        employeeId: true,
+      },
+    });
   },
   delete(companyId: string, id: string) {
     return prisma.document.deleteMany({ where: { id, companyId } });

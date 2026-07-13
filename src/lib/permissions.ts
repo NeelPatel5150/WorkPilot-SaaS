@@ -2,7 +2,7 @@
  * Role-Based Access Control (RBAC)
  * --------------------------------
  * Static defaults per role. Company Admins can extend/override these via
- * the `roles.permissions` JSON column (custom roles table) — this file
+ * the `roles.permissions` JSON column (custom roles table) - this file
  * only defines the baseline used when a company hasn't customized roles.
  */
 
@@ -31,7 +31,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPER_ADMIN: [
     "attendance:view_own",
     "attendance:view_all",
-    "attendance:mark",
     "leave:apply",
     "leave:view_own",
     "leave:approve_all",
@@ -48,7 +47,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   COMPANY_ADMIN: [
     "attendance:view_own",
     "attendance:view_all",
-    "attendance:mark",
     "leave:apply",
     "leave:view_own",
     "leave:approve_all",

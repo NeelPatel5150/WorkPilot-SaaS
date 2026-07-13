@@ -5,14 +5,93 @@ import { holidayRepo } from "@/repositories/holiday.repository";
 import { assertPermission } from "@/lib/session";
 import { hasPermission } from "@/lib/permissions";
 import { NotFoundError, ValidationError } from "@/lib/errors";
-import { daysBetween, startOfDayUTC } from "@/lib/utils";
+import { daysBetween, formatDate, startOfDayUTC } from "@/lib/utils";
 import { getWorkPolicy, isWeeklyOff } from "@/services/policy.service";
 import { notifyAdmins, notifyUser } from "@/services/notification.service";
 import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@/generated/prisma";
 
-export async function listLeaveTypes(companyId: string) {
-  return leaveRepo.listTypes(companyId);
+export async function listLeaveTypes(companyId: string, opts?: { applicableOnly?: boolean }) {
+  return leaveRepo.listTypes(companyId, opts);
+}
+
+export async function updateLeaveType(
+  actor: { id: string; companyId: string; role: UserRole },
+  id: string,
+  input: {
+    name: string;
+    code?: string | null;
+    defaultDays: number;
+    requiresProof?: boolean;
+    carryForward?: boolean;
+    maxCarryDays?: number;
+    sandwichRule?: boolean;
+    isApplicable: boolean;
+  }
+) {
+  assertPermission(actor.role, "settings:manage");
+  const existing = await leaveRepo.findType(actor.companyId, id);
+  if (!existing) throw new NotFoundError("Leave type not found");
+
+  const name = input.name.trim();
+  if (!name) throw new ValidationError("Leave type name is required");
+  if (!Number.isFinite(input.defaultDays) || input.defaultDays < 0) {
+    throw new ValidationError("Default days must be 0 or more");
+  }
+
+  await leaveRepo.updateType(actor.companyId, id, {
+    name,
+    code: input.code?.trim() || null,
+    defaultDays: Math.floor(input.defaultDays),
+    requiresProof: !!input.requiresProof,
+    carryForward: !!input.carryForward,
+    maxCarryDays: Math.max(0, Math.floor(input.maxCarryDays ?? 0)),
+    sandwichRule: !!input.sandwichRule,
+    isApplicable: input.isApplicable,
+  });
+
+  await activityRepo.log(actor.companyId, "leave_type.updated", actor.id, {
+    leaveTypeId: id,
+    isApplicable: input.isApplicable,
+  });
+}
+
+export async function createLeaveType(
+  actor: { id: string; companyId: string; role: UserRole },
+  input: {
+    name: string;
+    code?: string | null;
+    defaultDays: number;
+    requiresProof?: boolean;
+    carryForward?: boolean;
+    maxCarryDays?: number;
+    sandwichRule?: boolean;
+    isApplicable?: boolean;
+  }
+) {
+  assertPermission(actor.role, "settings:manage");
+  const name = input.name.trim();
+  if (!name) throw new ValidationError("Leave type name is required");
+  if (!Number.isFinite(input.defaultDays) || input.defaultDays < 0) {
+    throw new ValidationError("Default days must be 0 or more");
+  }
+
+  const created = await leaveRepo.createType(actor.companyId, {
+    name,
+    code: input.code?.trim() || null,
+    defaultDays: Math.floor(input.defaultDays),
+    requiresProof: !!input.requiresProof,
+    carryForward: !!input.carryForward,
+    maxCarryDays: Math.max(0, Math.floor(input.maxCarryDays ?? 0)),
+    sandwichRule: !!input.sandwichRule,
+    isApplicable: input.isApplicable ?? true,
+  });
+
+  await activityRepo.log(actor.companyId, "leave_type.created", actor.id, {
+    leaveTypeId: created.id,
+  });
+
+  return created;
 }
 
 /** Count leave days with optional sandwich (weekend between leave edges counts). */
@@ -68,12 +147,55 @@ export async function applyLeave(
 
   const startDate = startOfDayUTC(new Date(input.startDate));
   const endDate = startOfDayUTC(new Date(input.endDate));
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new ValidationError("Invalid leave dates");
+  }
+  const today = startOfDayUTC();
+  if (startDate < today) {
+    throw new ValidationError("Leave cannot start before today");
+  }
   if (endDate < startDate) throw new ValidationError("End date must be after start date");
 
   const type = (await leaveRepo.listTypes(actor.companyId)).find(
     (t) => t.id === input.leaveTypeId
   );
   if (!type) throw new NotFoundError("Leave type not found");
+  if (!type.isApplicable) {
+    throw new ValidationError("This leave type is not available for your company");
+  }
+
+  const holidays = await holidayRepo.list(actor.companyId);
+  const policy = await getWorkPolicy(actor.companyId);
+  const holidayHits: string[] = [];
+  const weekOffHits: string[] = [];
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  for (
+    let t = startDate.getTime();
+    t <= endDate.getTime();
+    t += 24 * 60 * 60 * 1000
+  ) {
+    const day = startOfDayUTC(new Date(t));
+    const key = day.toISOString().slice(0, 10);
+    if (isWeeklyOff(policy, day)) {
+      weekOffHits.push(`${dayNames[day.getUTCDay()]} (${formatDate(day)})`);
+      continue;
+    }
+    const hit = holidays.find(
+      (h) => startOfDayUTC(h.date).toISOString().slice(0, 10) === key
+    );
+    if (hit) holidayHits.push(`${hit.name} (${formatDate(hit.date)})`);
+  }
+  if (weekOffHits.length > 0) {
+    throw new ValidationError(
+      `Cannot apply leave on weekly off: ${weekOffHits.slice(0, 3).join(", ")}`
+    );
+  }
+  if (holidayHits.length > 0) {
+    throw new ValidationError(
+      `Cannot apply leave on holiday: ${holidayHits.slice(0, 3).join(", ")}`
+    );
+  }
 
   const days = await countLeaveDays(
     actor.companyId,
@@ -245,5 +367,10 @@ export async function decideLeave(
 export async function myBalances(companyId: string, userId: string) {
   const employee = await employeeRepo.findByUserId(companyId, userId);
   if (!employee) throw new NotFoundError("Employee profile not found");
-  return leaveRepo.listBalances(companyId, employee.id, new Date().getFullYear());
+  const balances = await leaveRepo.listBalances(
+    companyId,
+    employee.id,
+    new Date().getFullYear()
+  );
+  return balances.filter((b) => b.leaveType.isApplicable);
 }

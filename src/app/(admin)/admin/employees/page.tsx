@@ -14,6 +14,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { CreateEmployeeForm } from "@/features/employees/components/create-employee-form";
 import { OffboardEmployeeButton } from "@/features/employees/components/offboard-employee-button";
+import { UserAvatar } from "@/components/shared/user-avatar";
 
 export default async function AdminEmployeesPage() {
   const user = await requireUser();
@@ -53,15 +54,27 @@ export default async function AdminEmployeesPage() {
                 <TableRow key={e.id}>
                   <TableCell className="font-bold">{e.employeeCode}</TableCell>
                   <TableCell>
-                    {e.firstName} {e.lastName}
-                    <div className="text-xs text-[var(--muted-foreground)]">
-                      {e.user.email}
+                    <div className="flex items-center gap-3">
+                      <UserAvatar
+                        image={e.user.image}
+                        firstName={e.firstName}
+                        lastName={e.lastName}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold">
+                          {e.firstName} {e.lastName}
+                        </p>
+                        <p className="truncate text-xs text-[var(--muted-foreground)]">
+                          {e.user.email}
+                        </p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge>{e.user.role}</Badge>
                   </TableCell>
-                  <TableCell>{e.department?.name ?? "—"}</TableCell>
+                  <TableCell>{e.department?.name ?? "-"}</TableCell>
                   <TableCell>{e.employmentStatus}</TableCell>
                   <TableCell className="text-right">
                     {e.user.role === "COMPANY_ADMIN" ||

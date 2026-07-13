@@ -69,6 +69,9 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  /** Avatar bytes stored in DB (survives serverless / no S3). */
+  avatarData    Bytes?
+  avatarMime    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -143,6 +146,10 @@ model Company {
   slug           String   @unique
   logoUrl        String?
   faviconUrl     String?
+  logoData       Bytes?
+  logoMime       String?
+  faviconData    Bytes?
+  faviconMime    String?
   primaryColor   String   @default("#2563EB")
   secondaryColor String   @default("#EFF6FF")
   customDomain   String?  @unique
@@ -303,6 +310,8 @@ model LeaveType {
   carryForward  Boolean        @default(false)
   maxCarryDays  Int            @default(0)
   sandwichRule  Boolean        @default(false)
+  /** When false, employees cannot see or apply this leave type. */
+  isApplicable  Boolean        @default(true)
   leaveRequests LeaveRequest[]
   leaveBalances LeaveBalance[]
 
@@ -409,6 +418,8 @@ model Document {
   employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   name       String
   fileUrl    String
+  fileData   Bytes?
+  fileMime   String?
   expiresAt  DateTime?
   createdAt  DateTime  @default(now())
 

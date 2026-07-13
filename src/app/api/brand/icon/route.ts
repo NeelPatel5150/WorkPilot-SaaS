@@ -15,8 +15,8 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * Public white-label icon (favicon/logo) — no auth required.
- * ?kind=favicon|logo  & optional companyId
+ * Public white-label icon (favicon/logo) - no auth required.
+ * Serves from DB first; falls back to legacy disk uploads.
  */
 export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get("kind") === "logo" ? "logo" : "favicon";
@@ -34,6 +34,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const dbData =
+    kind === "logo"
+      ? company.logoData || company.faviconData
+      : company.faviconData || company.logoData;
+  const dbMime =
+    kind === "logo"
+      ? company.logoMime || company.faviconMime
+      : company.faviconMime || company.logoMime;
+
+  if (dbData && dbMime) {
+    return new NextResponse(new Uint8Array(dbData), {
+      headers: {
+        "Content-Type": dbMime,
+        "Cache-Control": "public, max-age=3600",
+      },
+    });
+  }
+
+  // Legacy disk fallback
   const fileUrl =
     kind === "logo"
       ? company.logoUrl || company.faviconUrl
