@@ -22,6 +22,26 @@ enum UserRole {
   EMPLOYEE
 }
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskWorkType {
+  WORK
+  FOLLOW_UP
+  DOCUMENT
+  OTHER
+}
+
+enum TaskAssigneeStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -87,6 +107,8 @@ model User {
   employee      Employee?
   activityLogs  ActivityLog[]
   notifications Notification[]
+  tasksCreated  Task[]
+  mcpTokens     McpToken[]
 
   @@index([companyId])
   @@map("user")
@@ -144,6 +166,7 @@ model Company {
   id             String   @id @default(cuid())
   name           String
   slug           String   @unique
+  address        String?  // postal / letterhead address for payslips & letters
   logoUrl        String?
   faviconUrl     String?
   logoData       Bytes?
@@ -158,6 +181,11 @@ model Company {
   timezone       String   @default("Asia/Kolkata")
   isActive       Boolean  @default(true)
   setupComplete  Boolean  @default(false) // post-register onboarding wizard
+  // Manual SaaS billing (platform-managed; no payment gateway yet)
+  plan           String   @default("TRIAL") // TRIAL | STARTER | GROWTH
+  seatLimit      Int      @default(25)
+  trialEndsAt    DateTime?
+  billingStatus  String   @default("OK") // OK | PAST_DUE | SUSPENDED
   // Work timing / attendance policy
   workStartHour    Int   @default(10)
   workStartMinute  Int   @default(0)
@@ -186,8 +214,13 @@ model Company {
   activityLogs  ActivityLog[]
   settings      Setting[]
   salarySlips   SalarySlip[]
+  salaryRevisions SalaryRevision[]
   attendanceExceptions AttendanceException[]
   payrollLocks  PayrollMonthLock[]
+  tasks         Task[]
+  projects      Project[]
+  offerLetters  OfferLetter[]
+  mcpTokens     McpToken[]
 
   @@map("companies")
 }
@@ -246,6 +279,15 @@ model Employee {
   employmentStatus EmploymentStatus @default(ACTIVE)
   emergencyContact String?
   basicSalary      Float?
+  // Bank / India payroll identifiers (payslip bank CSV + letterhead identity)
+  bankAccountName   String?
+  bankName          String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  panNumber         String?
+  uanNumber         String?
+  pfEligible        Boolean          @default(true)
+  esiEligible       Boolean          @default(false)
   exitDate         DateTime?
   exitReason       String?
   onboardingDone   Boolean          @default(false)
@@ -257,8 +299,12 @@ model Employee {
   leaveBalances LeaveBalance[]
   documents     Document[]
   salarySlips   SalarySlip[]
+  salaryRevisions SalaryRevision[]
   attendanceExceptions AttendanceException[]
   coveredLeaves LeaveRequest[] @relation("LeaveCover")
+  taskAssignments TaskAssignee[]
+  projectShares   ProjectShare[]
+  offerLetters    OfferLetter[]
 
   @@unique([companyId, employeeCode])
   @@index([companyId])
@@ -498,6 +544,24 @@ model PayrollMonthLock {
   @@map("payroll_month_locks")
 }
 
+model SalaryRevision {
+  id              String   @id @default(cuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  previousBasic   Float
+  newBasic        Float
+  effectiveFrom   DateTime @default(now())
+  note            String?
+  changedByUserId String?
+  createdAt       DateTime @default(now())
+
+  @@index([companyId, employeeId])
+  @@index([employeeId, createdAt])
+  @@map("salary_revisions")
+}
+
 model AttendanceException {
   id               String                     @id @default(cuid())
   companyId        String
@@ -518,4 +582,169 @@ model AttendanceException {
   @@index([companyId, status])
   @@index([employeeId])
   @@map("attendance_exceptions")
+}
+
+// ------------------------------------------------------------------
+// TASKS / WORKSPACE
+// ------------------------------------------------------------------
+
+model Task {
+  id          String             @id @default(cuid())
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime?          @db.Date
+  priority    TaskPriority       @default(MEDIUM)
+  workType    TaskWorkType       @default(WORK)
+  boardStatus TaskAssigneeStatus @default(TODO)
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  assignees   TaskAssignee[]
+
+  @@index([companyId, boardStatus])
+  @@index([companyId, createdAt])
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  id          String             @id @default(cuid())
+  taskId      String
+  task        Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  status      TaskAssigneeStatus @default(TODO)
+  note        String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([taskId, employeeId])
+  @@index([employeeId, status])
+  @@map("task_assignees")
+}
+
+// ------------------------------------------------------------------
+// PROJECTS · CREDENTIALS (admin vault)
+// ------------------------------------------------------------------
+
+model Project {
+  id          String              @id @default(cuid())
+  companyId   String
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  notes       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  credentials ProjectCredential[]
+  shares      ProjectShare[]
+
+  @@index([companyId, name])
+  @@map("projects")
+}
+
+model ProjectCredential {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, sortOrder])
+  @@map("project_credentials")
+}
+
+/** Employees who can view a project's credentials (read-only). */
+model ProjectShare {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, employeeId])
+  @@index([employeeId])
+  @@map("project_shares")
+}
+
+// ------------------------------------------------------------------
+// OFFER / APPOINTMENT LETTERS
+// ------------------------------------------------------------------
+
+model OfferLetter {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeId     String?
+  employee       Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  letterType     String    @default("OFFER") // OFFER | APPOINTMENT
+  candidateName  String
+  designation    String
+  department     String?
+  joiningDate    DateTime? @db.Date
+  salaryAmount   Float?
+  salaryCurrency String    @default("INR")
+  employmentType String? // FULL_TIME | PART_TIME | CONTRACT
+  reportingTo    String?
+  location       String?
+  bodyExtras     String? // optional extra paragraphs
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([companyId, createdAt])
+  @@map("offer_letters")
+}
+
+// ------------------------------------------------------------------
+// MCP ACCESS TOKENS (admin-only remote tools)
+// ------------------------------------------------------------------
+
+model McpToken {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  /** First chars shown in UI, e.g. wpmcp_ab12… */
+  tokenPrefix String
+  tokenHash   String    @unique
+  /** string[] of scope ids from MCP_SCOPES */
+  scopes      Json
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  usageEvents McpUsageEvent[]
+
+  @@index([companyId, createdAt])
+  @@index([userId])
+  @@map("mcp_tokens")
+}
+
+/** Tool / prompt invocations per MCP token (usage dashboard). */
+model McpUsageEvent {
+  id        String   @id @default(cuid())
+  companyId String
+  tokenId   String
+  token     McpToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  /** "tool" | "prompt" */
+  kind      String
+  name      String
+  ok        Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([tokenId, createdAt])
+  @@index([companyId, kind, name])
+  @@map("mcp_usage_events")
 }

@@ -10,14 +10,21 @@ const REQUIRED_DELEGATES = [
   "salarySlip",
   "payrollMonthLock",
   "attendanceException",
+  "task",
+  "project",
+  "offerLetter",
+  "mcpToken",
+  "mcpUsageEvent",
+  "salaryRevision",
 ] as const;
 
 /** Fields added to existing models - stale clients still have the model but reject these args. */
 const REQUIRED_MODEL_FIELDS = {
-  Company: ["setupComplete", "logoData"],
+  Company: ["setupComplete", "logoData", "plan", "seatLimit", "billingStatus"],
   LeaveType: ["isApplicable"],
   User: ["avatarData"],
   Document: ["fileData"],
+  Employee: ["bankAccountNumber", "bankIfsc", "panNumber", "pfEligible"],
 } as const;
 
 function createPrismaClient() {
