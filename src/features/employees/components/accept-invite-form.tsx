@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { acceptInviteAction } from "@/features/shared/actions";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toastError, toastSuccess } from "@/store/toast";
@@ -108,10 +108,9 @@ export function AcceptInviteForm({
           {!tokenValid ? (
             <div className="space-y-2">
               <Label htmlFor="tempPassword">Default password (from email)</Label>
-              <Input
+              <PasswordInput
                 id="tempPassword"
                 name="tempPassword"
-                type="password"
                 required
                 placeholder="Enter password from invite email"
               />
@@ -119,23 +118,23 @@ export function AcceptInviteForm({
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="newPassword">New password</Label>
-            <Input
+            <PasswordInput
               id="newPassword"
               name="newPassword"
-              type="password"
               required
               minLength={8}
+              autoComplete="new-password"
               placeholder="Enter new password"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm new password</Label>
-            <Input
+            <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              type="password"
               required
               minLength={8}
+              autoComplete="new-password"
               placeholder="Confirm new password"
             />
           </div>

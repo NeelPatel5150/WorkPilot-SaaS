@@ -4,14 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { AvatarUploadCard } from "@/features/profile/components/avatar-setup";
+import { OwnBankForm } from "@/features/employees/components/own-bank-form";
+import { getEmployeeOrThrow } from "@/services/employee.service";
 
 export default async function EmployeeProfilePage() {
   const user = await requireUser();
-  const employee = user.employee;
+  const employee = user.employee
+    ? await getEmployeeOrThrow(user.companyId!, user.employee.id).catch(() => null)
+    : null;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Profile" description="Your employment details." />
+      <PageHeader title="Profile" description="Your employment and bank details." />
       <Card>
         <CardHeader>
           <CardTitle>Avatar</CardTitle>
@@ -54,6 +58,16 @@ export default async function EmployeeProfilePage() {
           ) : null}
         </CardContent>
       </Card>
+      {employee ? (
+        <OwnBankForm
+          bankAccountName={employee.bankAccountName || ""}
+          bankName={employee.bankName || ""}
+          bankAccountNumber={employee.bankAccountNumber || ""}
+          bankIfsc={employee.bankIfsc || ""}
+          panNumber={employee.panNumber || ""}
+          uanNumber={employee.uanNumber || ""}
+        />
+      ) : null}
     </div>
   );
 }
