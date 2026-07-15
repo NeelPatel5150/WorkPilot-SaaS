@@ -20,6 +20,7 @@ export default async function OnboardingPage() {
       <OnboardingWizard
         company={{
           name: user.company!.name,
+          address: user.company!.address ?? null,
           primaryColor: user.company!.primaryColor,
           secondaryColor: user.company!.secondaryColor,
           logoUrl: user.company!.logoUrl,

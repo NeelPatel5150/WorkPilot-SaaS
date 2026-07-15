@@ -49,6 +49,33 @@ export async function registerCompanyAction(formData: FormData) {
   }
 }
 
+export async function applyIndustryTemplateAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const templateId = String(formData.get("templateId") || "") as
+      | "it"
+      | "factory"
+      | "clinic";
+    if (!["it", "factory", "clinic"].includes(templateId)) {
+      return { error: "Pick IT, Factory, or Clinic" };
+    }
+    const { applyIndustryTemplate } = await import(
+      "@/services/onboarding-template.service"
+    );
+    const result = await applyIndustryTemplate(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      templateId
+    );
+    revalidatePath("/onboarding");
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin/holidays");
+    revalidatePath("/admin/leaves");
+    return { success: true, ...result };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
 export async function completeOnboardingAction() {
   try {
     const user = await requireUser();
@@ -223,6 +250,7 @@ export async function decideLeaveAction(
       comment
     );
     revalidatePath("/admin/leaves");
+    revalidatePath("/admin/approvals");
     revalidatePath("/admin/dashboard");
     revalidatePath("/employee/leaves");
     revalidatePath("/employee/dashboard");
@@ -241,15 +269,17 @@ export async function updateBrandingAction(formData: FormData) {
       return { error: "Only company admins can update branding" };
     }
     const companyId = user.companyId!;
+    const addressRaw = formData.get("address");
     const patch: {
       name?: string;
+      address?: string | null;
       primaryColor?: string;
       secondaryColor?: string;
       logoUrl?: string | null;
       faviconUrl?: string | null;
-      logoData?: Buffer | null;
+      logoData?: Uint8Array | null;
       logoMime?: string | null;
-      faviconData?: Buffer | null;
+      faviconData?: Uint8Array | null;
       faviconMime?: string | null;
     } = {
       name: String(formData.get("name") || user.company!.name),
@@ -258,11 +288,15 @@ export async function updateBrandingAction(formData: FormData) {
         formData.get("secondaryColor") || user.company!.secondaryColor
       ),
     };
+    if (addressRaw !== null) {
+      const trimmed = String(addressRaw).trim();
+      patch.address = trimmed || null;
+    }
 
     const logo = formData.get("logo");
     if (logo instanceof File && logo.size > 0) {
       if (logo.size > 2 * 1024 * 1024) return { error: "Logo must be under 2MB" };
-      const buf = Buffer.from(await logo.arrayBuffer());
+      const buf = new Uint8Array(await logo.arrayBuffer());
       patch.logoData = buf;
       patch.logoMime = logo.type || "image/png";
       patch.logoUrl = `/api/brand/icon?kind=logo&companyId=${companyId}&v=${Date.now()}`;
@@ -270,7 +304,7 @@ export async function updateBrandingAction(formData: FormData) {
     const favicon = formData.get("favicon");
     if (favicon instanceof File && favicon.size > 0) {
       if (favicon.size > 512 * 1024) return { error: "Favicon must be under 512KB" };
-      const buf = Buffer.from(await favicon.arrayBuffer());
+      const buf = new Uint8Array(await favicon.arrayBuffer());
       patch.faviconData = buf;
       patch.faviconMime = favicon.type || "image/png";
       patch.faviconUrl = `/api/brand/icon?kind=favicon&companyId=${companyId}&v=${Date.now()}`;
@@ -321,6 +355,33 @@ export async function uploadDocumentAction(formData: FormData) {
   }
 }
 
+export async function uploadOwnDocumentAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    if (!user.employee?.id) return { error: "Employee profile not found" };
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { error: "File is required" };
+    const expiresRaw = String(formData.get("expiresAt") || "");
+    const expiresAt = expiresRaw ? new Date(expiresRaw) : null;
+    const { uploadOwnDocument } = await import("@/services/document.service");
+    await uploadOwnDocument(
+      {
+        id: user.id,
+        companyId: user.companyId!,
+        role: user.role,
+        employeeId: user.employee.id,
+      },
+      file,
+      expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null
+    );
+    revalidatePath("/employee/documents");
+    revalidatePath("/admin/documents");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
 export async function deleteDocumentAction(id: string) {
   try {
     const user = await requireUser();
@@ -360,6 +421,19 @@ export async function importHolidaysAction(formData: FormData) {
   try {
     const user = await requireUser();
     const { importHolidays } = await import("@/services/holiday.service");
+    const packId = String(formData.get("packId") || "").trim();
+    if (packId) {
+      const { importIndiaHolidayPack } = await import(
+        "@/services/onboarding-template.service"
+      );
+      const result = await importIndiaHolidayPack(
+        { id: user.id, companyId: user.companyId!, role: user.role },
+        packId
+      );
+      revalidatePath("/admin/holidays");
+      revalidatePath("/onboarding");
+      return { success: true, ...result };
+    }
     const {
       parseHolidayImportText,
       fetchGoogleSheetCsv,
@@ -415,6 +489,25 @@ export async function deleteHolidayAction(id: string) {
       id
     );
     revalidatePath("/admin/holidays");
+    revalidatePath("/employee/leaves");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateHolidayAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateHoliday } = await import("@/services/holiday.service");
+    await updateHoliday(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      String(formData.get("id") || ""),
+      String(formData.get("name") || ""),
+      String(formData.get("date") || "")
+    );
+    revalidatePath("/admin/holidays");
+    revalidatePath("/employee/leaves");
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -496,6 +589,23 @@ export async function uploadAvatarAction(formData: FormData) {
     revalidatePath("/admin/settings");
     revalidatePath("/admin/employees");
     return { success: true, image };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function changePasswordAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { changeUserPassword } = await import("@/services/profile.service");
+    await changeUserPassword(user.id, user.companyId!, {
+      currentPassword: String(formData.get("currentPassword") || ""),
+      newPassword: String(formData.get("newPassword") || ""),
+      confirmPassword: String(formData.get("confirmPassword") || ""),
+    });
+    revalidatePath("/admin/settings");
+    revalidatePath("/employee/profile");
+    return { success: true as const };
   } catch (error) {
     return toActionError(error);
   }
@@ -664,7 +774,11 @@ export async function createLeaveTypeAction(formData: FormData) {
         name: String(formData.get("name") || ""),
         code: String(formData.get("code") || "") || null,
         defaultDays: Number(formData.get("defaultDays") || 0),
-        isApplicable: formData.get("isApplicable") === "on",
+        requiresProof: formData.get("requiresProof") === "on",
+        carryForward: formData.get("carryForward") === "on",
+        sandwichRule: formData.get("sandwichRule") === "on",
+        maxCarryDays: Number(formData.get("maxCarryDays") || 0),
+        isApplicable: true,
       }
     );
     revalidatePath("/admin/settings");
@@ -722,6 +836,7 @@ export async function decideExceptionAction(
       comment
     );
     revalidatePath("/admin/exceptions");
+    revalidatePath("/admin/approvals");
     revalidatePath("/admin/attendance");
     revalidatePath("/employee/attendance");
     revalidatePath("/admin/notifications");
@@ -751,6 +866,8 @@ export async function offboardEmployeeAction(formData: FormData) {
       }
     );
     revalidatePath("/admin/employees");
+    revalidatePath("/admin/employees/manage");
+    revalidatePath(`/admin/employees/${employeeId}`);
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -769,6 +886,8 @@ export async function reactivateEmployeeAction(formData: FormData) {
       employeeId
     );
     revalidatePath("/admin/employees");
+    revalidatePath("/admin/employees/manage");
+    revalidatePath(`/admin/employees/${employeeId}`);
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -802,28 +921,8 @@ export async function publishSlipAction(id: string) {
 }
 
 export async function lockPayrollMonthAction(formData: FormData) {
-  try {
-    const user = await requireUser();
-    const monthRaw = String(formData.get("month") || "");
-    let year: number;
-    let month: number;
-    if (/^\d{4}-\d{2}$/.test(monthRaw)) {
-      [year, month] = monthRaw.split("-").map(Number);
-    } else {
-      year = Number(formData.get("year"));
-      month = Number(formData.get("month"));
-    }
-    const { lockPayrollMonth } = await import("@/services/payroll.service");
-    await lockPayrollMonth(
-      { id: user.id, companyId: user.companyId!, role: user.role },
-      year,
-      month
-    );
-    revalidatePath("/admin/payroll");
-    return { success: true };
-  } catch (error) {
-    return toActionError(error);
-  }
+  void formData;
+  return { error: "Month lock has been removed from payroll" };
 }
 
 export async function updateSalarySlipAction(formData: FormData) {
@@ -854,6 +953,282 @@ export async function updateSalarySlipAction(formData: FormData) {
     revalidatePath("/admin/payroll");
     revalidatePath("/employee/payslips");
     return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function addCatalogLeaveTypeAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { addCatalogLeaveType } = await import("@/services/leave.service");
+    const key = String(formData.get("catalogKey") || "");
+    await addCatalogLeaveType(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      key
+    );
+    revalidatePath("/admin/settings");
+    revalidatePath("/employee/leaves");
+    revalidatePath("/employee/dashboard");
+    revalidatePath("/admin/employees/manage");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function disableLeaveTypeAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { disableLeaveType } = await import("@/services/leave.service");
+    await disableLeaveType(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      String(formData.get("id") || "")
+    );
+    revalidatePath("/admin/settings");
+    revalidatePath("/employee/leaves");
+    revalidatePath("/employee/dashboard");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateEmployeeProfileAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateEmployeeProfile } = await import("@/services/employee.service");
+    const employeeId = String(formData.get("employeeId") || "");
+    const schema = z.object({
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+      phone: z.string().optional(),
+      emergencyContact: z.string().optional(),
+      designation: z.string().optional(),
+      departmentId: z.string().optional(),
+      role: z.enum(["COMPANY_ADMIN", "HR", "MANAGER", "EMPLOYEE"]).optional(),
+      joiningDate: z.string().optional(),
+    });
+    const parsed = schema.parse({
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+      email: formData.get("email"),
+      phone: formData.get("phone") || undefined,
+      emergencyContact: formData.get("emergencyContact") || undefined,
+      designation: formData.get("designation") || undefined,
+      departmentId: formData.get("departmentId") || undefined,
+      role: (formData.get("role") as "COMPANY_ADMIN" | "HR" | "MANAGER" | "EMPLOYEE") || undefined,
+      joiningDate: formData.get("joiningDate") || undefined,
+    });
+
+    await updateEmployeeProfile(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      employeeId,
+      {
+        ...parsed,
+        departmentId: parsed.departmentId || null,
+      }
+    );
+    revalidatePath("/admin/employees");
+    revalidatePath("/admin/employees/manage");
+    revalidatePath(`/admin/employees/${employeeId}`);
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function adjustEmployeeSalaryAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { adjustEmployeeSalary } = await import("@/services/employee.service");
+    const employeeId = String(formData.get("employeeId") || "");
+    const modeRaw = String(formData.get("mode") || "set");
+    const mode =
+      modeRaw === "increment" || modeRaw === "decrement" || modeRaw === "set"
+        ? modeRaw
+        : "set";
+    const amount = Number(formData.get("amount"));
+    const result = await adjustEmployeeSalary(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      employeeId,
+      { mode, amount }
+    );
+    revalidatePath("/admin/employees/manage");
+    revalidatePath(`/admin/employees/${employeeId}`);
+    revalidatePath("/admin/payroll");
+    return { success: true as const, ...result };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateEmployeeBankAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateEmployeeBankDetails } = await import(
+      "@/services/employee.service"
+    );
+    const employeeId = String(formData.get("employeeId") || "");
+    await updateEmployeeBankDetails(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      employeeId,
+      {
+        bankAccountName: String(formData.get("bankAccountName") || ""),
+        bankName: String(formData.get("bankName") || ""),
+        bankAccountNumber: String(formData.get("bankAccountNumber") || ""),
+        bankIfsc: String(formData.get("bankIfsc") || ""),
+        panNumber: String(formData.get("panNumber") || ""),
+        uanNumber: String(formData.get("uanNumber") || ""),
+        pfEligible: formData.get("pfEligible") === "1",
+        esiEligible: formData.get("esiEligible") === "1",
+      }
+    );
+    revalidatePath(`/admin/employees/${employeeId}`);
+    revalidatePath("/admin/employees/manage");
+    revalidatePath("/admin/payroll");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateOwnBankAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateOwnBankDetails } = await import("@/services/employee.service");
+    await updateOwnBankDetails(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      {
+        bankAccountName: String(formData.get("bankAccountName") || ""),
+        bankName: String(formData.get("bankName") || ""),
+        bankAccountNumber: String(formData.get("bankAccountNumber") || ""),
+        bankIfsc: String(formData.get("bankIfsc") || ""),
+        panNumber: String(formData.get("panNumber") || ""),
+        uanNumber: String(formData.get("uanNumber") || ""),
+      }
+    );
+    revalidatePath("/employee/profile");
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateEmployeeLeaveBalanceAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateEmployeeLeaveBalance } = await import(
+      "@/services/employee.service"
+    );
+    const employeeId = String(formData.get("employeeId") || "");
+    const leaveTypeId = String(formData.get("leaveTypeId") || "");
+    const year = Number(formData.get("year") || new Date().getFullYear());
+    const allocated = Number(formData.get("allocated"));
+    await updateEmployeeLeaveBalance(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      employeeId,
+      { leaveTypeId, year, allocated }
+    );
+    revalidatePath(`/admin/employees/${employeeId}`);
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function createTaskAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const assignMode = String(formData.get("assignMode") || "selected");
+    const employeeIds = formData
+      .getAll("employeeIds")
+      .map((v) => String(v))
+      .filter(Boolean);
+    const { createTask } = await import("@/services/task.service");
+    await createTask(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      {
+        title: String(formData.get("title") || ""),
+        description: String(formData.get("description") || "") || undefined,
+        dueDate: String(formData.get("dueDate") || "") || undefined,
+        priority: String(formData.get("priority") || "MEDIUM"),
+        workType: String(formData.get("workType") || "WORK"),
+        boardStatus: String(formData.get("boardStatus") || "TODO"),
+        assignAll: assignMode === "all",
+        employeeIds,
+      }
+    );
+    revalidatePath("/admin/tasks");
+    revalidatePath("/admin/workspace");
+    revalidatePath("/employee/tasks");
+    revalidatePath("/employee/workspace");
+    revalidatePath("/employee/dashboard");
+    revalidatePath("/admin/notifications");
+    revalidatePath("/employee/notifications");
+    return { success: true as const };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateTaskBoardStatusAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateTaskBoardStatus } = await import("@/services/task.service");
+    await updateTaskBoardStatus(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      String(formData.get("taskId") || ""),
+      String(formData.get("boardStatus") || "")
+    );
+    revalidatePath("/admin/tasks");
+    revalidatePath("/admin/workspace");
+    revalidatePath("/employee/tasks");
+    revalidatePath("/employee/workspace");
+    return { success: true as const };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateMyTaskStatusAction(formData: FormData) {
+  try {
+    const user = await requireUser();
+    const { updateMyTaskStatus } = await import("@/services/task.service");
+    await updateMyTaskStatus(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      {
+        assigneeId: String(formData.get("assigneeId") || ""),
+        status: String(formData.get("status") || ""),
+        note: String(formData.get("note") || "") || undefined,
+      }
+    );
+    revalidatePath("/admin/tasks");
+    revalidatePath("/admin/workspace");
+    revalidatePath("/employee/tasks");
+    revalidatePath("/employee/workspace");
+    revalidatePath("/employee/dashboard");
+    return { success: true as const };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function deleteTaskAction(taskId: string) {
+  try {
+    const user = await requireUser();
+    const { deleteTask } = await import("@/services/task.service");
+    await deleteTask(
+      { id: user.id, companyId: user.companyId!, role: user.role },
+      taskId
+    );
+    revalidatePath("/admin/tasks");
+    revalidatePath("/admin/workspace");
+    revalidatePath("/employee/tasks");
+    revalidatePath("/employee/workspace");
+    revalidatePath("/employee/dashboard");
+    return { success: true as const };
   } catch (error) {
     return toActionError(error);
   }

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { registerCompanyAction } from "@/features/shared/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AuthBrandHeader } from "@/components/auth/auth-brand-header";
@@ -64,12 +65,12 @@ export function RegisterForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               required
               minLength={8}
+              autoComplete="new-password"
               placeholder="At least 8 characters"
             />
           </div>

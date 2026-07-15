@@ -1,10 +1,20 @@
-type RealtimePayload = {
+type NotificationPayload = {
   type: "notification";
   id: string;
   title: string;
   message: string;
   createdAt: string;
 };
+
+type WorkspacePayload = {
+  type: "workspace";
+  kind: "task_moved" | "task_changed";
+  companyId: string;
+  taskId?: string;
+  at: string;
+};
+
+export type RealtimePayload = NotificationPayload | WorkspacePayload;
 
 type Subscriber = (payload: RealtimePayload) => void;
 
@@ -38,4 +48,9 @@ export function publishToUser(userId: string, payload: RealtimePayload) {
       console.error("realtime publish failed", error);
     }
   }
+}
+
+export function publishToUsers(userIds: string[], payload: RealtimePayload) {
+  const unique = Array.from(new Set(userIds.filter(Boolean)));
+  for (const id of unique) publishToUser(id, payload);
 }

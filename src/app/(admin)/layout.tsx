@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { PortalShell } from "@/components/layout/portal-shell";
 import { adminNav } from "@/config/nav";
 import { requireUser, isAdminRole } from "@/lib/session";
+import type { Role } from "@/lib/permissions";
+import { ManagerMobileDock } from "@/components/layout/manager-mobile-dock";
 
 export default async function AdminLayout({
   children,
@@ -19,15 +21,22 @@ export default async function AdminLayout({
     redirect("/onboarding");
   }
 
+  const role = user.role as Role;
+  const items = adminNav.filter(
+    (item) => !item.roles || item.roles.includes(role)
+  );
+  const isManager = user.role === "MANAGER";
+
   return (
     <PortalShell
       brand={user.company!.name}
       logoUrl={user.company!.logoUrl}
-      title="Admin"
+      title={isManager ? "Manager" : "Admin"}
       userName={user.name}
       userImage={user.image}
-      items={adminNav}
+      items={items}
       notificationsHref="/admin/notifications"
+      mobileDock={isManager ? <ManagerMobileDock /> : undefined}
     >
       {children}
     </PortalShell>

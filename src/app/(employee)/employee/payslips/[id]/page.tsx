@@ -61,6 +61,9 @@ export default async function EmployeePayslipDetailPage({
           ) : null}
           <div>
             <CardTitle>{slip.company.name}</CardTitle>
+            {slip.company.address ? (
+              <p className="text-sm text-[var(--muted-foreground)]">{slip.company.address}</p>
+            ) : null}
             <p className="text-sm text-[var(--muted-foreground)]">
               {slip.employee.firstName} {slip.employee.lastName} · {slip.employee.employeeCode}
             </p>

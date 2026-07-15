@@ -3,7 +3,7 @@ import { activityRepo } from "@/repositories/activity.repository";
 import { assertPermission } from "@/lib/session";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { deleteUpload } from "@/lib/storage";
-import { notifyCompanyUsers, notifyUser } from "@/services/notification.service";
+import { notifyCompanyUsers, notifyUser, notifyAdmins } from "@/services/notification.service";
 import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@/generated/prisma";
 
@@ -71,6 +71,47 @@ export async function uploadDocument(
   }
 
   await activityRepo.log(actor.companyId, "document.uploaded", actor.id, {
+    documentId: doc.id,
+  });
+  return { ...doc, fileUrl };
+}
+
+/** Employee self-upload of personal KYC / docs (assigned to self only). */
+export async function uploadOwnDocument(
+  actor: { id: string; companyId: string; role: UserRole; employeeId: string },
+  file: File,
+  expiresAt?: Date | null
+) {
+  if (!file || file.size === 0) throw new ValidationError("File is required");
+  if (file.size > 10 * 1024 * 1024) throw new ValidationError("Max file size is 10MB");
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mime = file.type || "application/octet-stream";
+
+  const doc = await documentRepo.create({
+    companyId: actor.companyId,
+    employeeId: actor.employeeId,
+    name: file.name,
+    fileUrl: "pending",
+    fileData: buffer,
+    fileMime: mime,
+    expiresAt: expiresAt ?? null,
+  });
+
+  const fileUrl = `/api/documents/${doc.id}`;
+  await prisma.document.update({
+    where: { id: doc.id },
+    data: { fileUrl },
+  });
+
+  await notifyAdmins(
+    actor.companyId,
+    "Employee document uploaded",
+    `An employee uploaded "${file.name}". Review in Documents.`,
+    { channels: ["in_app", "email"], excludeUserId: actor.id }
+  );
+
+  await activityRepo.log(actor.companyId, "document.self_uploaded", actor.id, {
     documentId: doc.id,
   });
   return { ...doc, fileUrl };

@@ -23,7 +23,9 @@ export type Permission =
   | "reports:view"
   | "settings:manage"
   | "branding:manage"
-  | "roles:manage";
+  | "roles:manage"
+  | "tasks:manage"
+  | "tasks:view_own";
 
 export type Role = "SUPER_ADMIN" | "COMPANY_ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
 
@@ -43,6 +45,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "settings:manage",
     "branding:manage",
     "roles:manage",
+    "tasks:manage",
+    "tasks:view_own",
   ],
   COMPANY_ADMIN: [
     "attendance:view_own",
@@ -59,6 +63,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "settings:manage",
     "branding:manage",
     "roles:manage",
+    "tasks:manage",
+    "tasks:view_own",
   ],
   HR: [
     "attendance:view_own",
@@ -74,6 +80,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "payroll:manage",
     "reports:view",
     "settings:manage",
+    "tasks:manage",
+    "tasks:view_own",
   ],
   MANAGER: [
     "attendance:view_team",
@@ -83,6 +91,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "leave:approve_team",
     "employees:view",
     "reports:view",
+    "tasks:manage",
+    "tasks:view_own",
   ],
   EMPLOYEE: [
     "attendance:view_own",
@@ -90,6 +100,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "leave:apply",
     "leave:view_own",
     "payroll:view",
+    "tasks:view_own",
   ],
 };
 
@@ -97,8 +108,8 @@ export function hasPermission(role: Role, permission: Permission): boolean {
   const granted = ROLE_PERMISSIONS[role] ?? [];
   if (granted.includes(permission)) return true;
   // manage implies view for the same resource (e.g. payroll:manage → payroll:view)
-  if (permission.endsWith(":view")) {
-    const manage = permission.replace(/:view$/, ":manage") as Permission;
+  if (permission.endsWith(":view") || permission.endsWith(":view_own")) {
+    const manage = permission.replace(/:view(_own)?$/, ":manage") as Permission;
     if (granted.includes(manage)) return true;
   }
   return false;

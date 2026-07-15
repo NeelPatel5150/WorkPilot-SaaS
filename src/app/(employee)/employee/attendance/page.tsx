@@ -17,6 +17,7 @@ import { formatDate, formatTime } from "@/lib/utils";
 
 export default async function EmployeeAttendancePage() {
   const user = await requireUser();
+  const tz = user.company?.timezone;
   const { today } = await getMyTodayAttendance(user.companyId!, user.id, user.role);
   const history = await listMyAttendance(user.companyId!, user.id, user.role);
 
@@ -26,7 +27,7 @@ export default async function EmployeeAttendancePage() {
         title="My attendance"
         description={
           today?.checkIn
-            ? `Checked in at ${formatTime(today.checkIn)}`
+            ? `Checked in at ${formatTime(today.checkIn, tz)}`
             : "You have not checked in yet today."
         }
         actions={<AttendanceActions />}
@@ -49,9 +50,9 @@ export default async function EmployeeAttendancePage() {
             <TableBody>
               {history.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell>{formatDate(r.date)}</TableCell>
-                  <TableCell>{formatTime(r.checkIn)}</TableCell>
-                  <TableCell>{formatTime(r.checkOut)}</TableCell>
+                  <TableCell>{formatDate(r.date, tz)}</TableCell>
+                  <TableCell>{formatTime(r.checkIn, tz)}</TableCell>
+                  <TableCell>{formatTime(r.checkOut, tz)}</TableCell>
                   <TableCell>{r.workingHours ?? "-"}</TableCell>
                   <TableCell>
                     <Badge>{r.status}</Badge>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="WorkPilot">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="55%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#g)"/>
+  <!-- W mark -->
+  <text
+    x="248"
+    y="230"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    fill="#ffffff"
+    font-family="Arial Black, Arial, Helvetica, sans-serif"
+    font-size="200"
+    font-weight="900"
+  >W</text>
+  <!-- Pilot light -->
+  <circle cx="348" cy="148" r="28" fill="#FBBF24"/>
+  <!-- Product name -->
+  <text
+    x="256"
+    y="372"
+    text-anchor="middle"
+    fill="#FBBF24"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="40"
+    font-weight="700"
+    letter-spacing="2"
+  >WorkPilot</text>
+</svg>

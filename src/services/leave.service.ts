@@ -94,6 +94,111 @@ export async function createLeaveType(
   return created;
 }
 
+/**
+ * Enable a catalog leave type for this company (or re-activate if it was turned off).
+ * Comp Off gets 0 default allotment — days are granted per employee later.
+ */
+export async function addCatalogLeaveType(
+  actor: { id: string; companyId: string; role: UserRole },
+  catalogKey: string
+) {
+  assertPermission(actor.role, "settings:manage");
+  const { getLeaveCatalogPreset } = await import("@/lib/leave-catalog");
+  const preset = getLeaveCatalogPreset(catalogKey);
+  if (!preset) throw new ValidationError("Unknown leave type");
+
+  const existing =
+    (await leaveRepo.findTypeByCode(actor.companyId, preset.code)) ||
+    (await leaveRepo.findTypeByName(actor.companyId, preset.name));
+
+  let leaveTypeId: string;
+
+  if (existing) {
+    if (existing.isApplicable) {
+      throw new ValidationError(`${preset.name} is already enabled for your company`);
+    }
+    await leaveRepo.updateType(actor.companyId, existing.id, {
+      isApplicable: true,
+      defaultDays: preset.defaultDays,
+      requiresProof: preset.requiresProof,
+      carryForward: preset.carryForward,
+      maxCarryDays: preset.maxCarryDays,
+      sandwichRule: preset.sandwichRule,
+      code: preset.code,
+      name: preset.name,
+    });
+    leaveTypeId = existing.id;
+  } else {
+    const created = await leaveRepo.createType(actor.companyId, {
+      name: preset.name,
+      code: preset.code,
+      defaultDays: preset.defaultDays,
+      requiresProof: preset.requiresProof,
+      carryForward: preset.carryForward,
+      maxCarryDays: preset.maxCarryDays,
+      sandwichRule: preset.sandwichRule,
+      isApplicable: true,
+    });
+    leaveTypeId = created.id;
+  }
+
+  // Backfill balances for current employees (Comp Off starts at 0 days).
+  const year = new Date().getFullYear();
+  const employees = await prisma.employee.findMany({
+    where: {
+      companyId: actor.companyId,
+      employmentStatus: { in: ["ACTIVE", "ON_NOTICE"] },
+    },
+    select: { id: true },
+  });
+  const allocated = preset.scope === "employee" ? 0 : preset.defaultDays;
+  for (const emp of employees) {
+    const bal = await leaveRepo.getBalance(
+      actor.companyId,
+      emp.id,
+      leaveTypeId,
+      year
+    );
+    if (!bal) {
+      await leaveRepo.upsertBalance({
+        companyId: actor.companyId,
+        employeeId: emp.id,
+        leaveTypeId,
+        year,
+        allocated,
+        used: 0,
+      });
+    }
+  }
+
+  await activityRepo.log(actor.companyId, "leave_type.catalog_added", actor.id, {
+    leaveTypeId,
+    code: preset.code,
+    scope: preset.scope,
+  });
+
+  return { leaveTypeId, preset };
+}
+
+/** Soft-remove: hide from employees (keeps history). */
+export async function disableLeaveType(
+  actor: { id: string; companyId: string; role: UserRole },
+  id: string
+) {
+  assertPermission(actor.role, "settings:manage");
+  const existing = await leaveRepo.findType(actor.companyId, id);
+  if (!existing) throw new NotFoundError("Leave type not found");
+  if ((existing.code || "").toUpperCase() === "CL") {
+    throw new ValidationError(
+      "Casual Leave is required. You can edit days, but it cannot be removed."
+    );
+  }
+  await leaveRepo.updateType(actor.companyId, id, { isApplicable: false });
+  await activityRepo.log(actor.companyId, "leave_type.disabled", actor.id, {
+    leaveTypeId: id,
+  });
+}
+
 /** Count leave days with optional sandwich (weekend between leave edges counts). */
 export async function countLeaveDays(
   companyId: string,
@@ -214,12 +319,13 @@ export async function applyLeave(
   );
 
   if (!balance) {
+    const { isEmployeeScopedLeave } = await import("@/lib/leave-catalog");
     balance = await leaveRepo.upsertBalance({
       companyId: actor.companyId,
       employeeId: employee.id,
       leaveTypeId: type.id,
       year,
-      allocated: type.defaultDays,
+      allocated: isEmployeeScopedLeave(type.code) ? 0 : type.defaultDays,
       used: 0,
     });
   }

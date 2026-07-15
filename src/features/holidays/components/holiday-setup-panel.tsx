@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toastError, toastSuccess } from "@/store/toast";
+import { listIndiaHolidayPacks } from "@/lib/india-holiday-packs";
 
-type Mode = "manual" | "csv" | "sheet";
+type Mode = "manual" | "csv" | "sheet" | "pack";
 
 export function HolidaySetupPanel({
   onDone,
@@ -21,10 +22,11 @@ export function HolidaySetupPanel({
   onBack?: () => void;
   compact?: boolean;
 }) {
-  const [mode, setMode] = useState<Mode>("manual");
+  const [mode, setMode] = useState<Mode>("pack");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [manualRows, setManualRows] = useState([{ name: "", date: "" }]);
+  const packs = listIndiaHolidayPacks();
 
   function addManualRow() {
     setManualRows((rows) => [...rows, { name: "", date: "" }]);
@@ -35,13 +37,14 @@ export function HolidaySetupPanel({
       {!compact ? (
         <p className="text-sm text-[var(--muted-foreground)]">
           Add company holidays so employees see them and cannot apply leave on those days.
-          Import from CSV / Google Sheet, enter manually, or skip for now.
+          Pick a state pack, import CSV / Google Sheet, enter manually, or skip.
         </p>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
         {(
           [
+            { id: "pack", label: "India packs" },
             { id: "manual", label: "Enter manually" },
             { id: "csv", label: "CSV upload / paste" },
             { id: "sheet", label: "Google Sheet" },
@@ -64,6 +67,60 @@ export function HolidaySetupPanel({
           </button>
         ))}
       </div>
+
+      {mode === "pack" ? (
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {packs.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={pending}
+                className="rounded-xl border-2 border-[var(--border)] bg-white p-3 text-left shadow-[3px_3px_0_0_var(--border)] hover:bg-[var(--secondary)]/40"
+                onClick={() => {
+                  setError(null);
+                  const fd = new FormData();
+                  fd.set("packId", p.id);
+                  startTransition(async () => {
+                    const res = await importHolidaysAction(fd);
+                    if (res && "error" in res) {
+                      setError(res.error);
+                      toastError("Import failed", res.error);
+                      return;
+                    }
+                    toastSuccess(
+                      `${p.label} imported`,
+                      res && "imported" in res
+                        ? `${res.imported} holiday(s) added`
+                        : "Done"
+                    );
+                    onDone?.();
+                  });
+                }}
+              >
+                <p className="font-black">{p.label}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">{p.description}</p>
+                <p className="mt-1 text-xs font-semibold">{p.holidays.length} dates</p>
+              </button>
+            ))}
+          </div>
+          {error ? (
+            <p className="text-sm font-semibold text-[var(--destructive)]">{error}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {onBack ? (
+              <Button type="button" variant="outline" onClick={onBack} disabled={pending}>
+                Back
+              </Button>
+            ) : null}
+            {onSkip ? (
+              <Button type="button" variant="secondary" onClick={onSkip} disabled={pending}>
+                Skip holidays
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {mode === "manual" ? (
         <form

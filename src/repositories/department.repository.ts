@@ -17,4 +17,7 @@ export const departmentRepo = {
   delete(companyId: string, id: string) {
     return prisma.department.deleteMany({ where: { id, companyId } });
   },
+  rename(companyId: string, id: string, name: string) {
+    return prisma.department.updateMany({ where: { id, companyId }, data: { name } });
+  },
 };

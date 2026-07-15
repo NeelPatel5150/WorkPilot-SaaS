@@ -1,7 +1,7 @@
 import { holidayRepo, announcementRepo } from "@/repositories/holiday.repository";
 import { activityRepo } from "@/repositories/activity.repository";
 import { assertPermission } from "@/lib/session";
-import { ValidationError } from "@/lib/errors";
+import { ValidationError, NotFoundError } from "@/lib/errors";
 import { formatDate, startOfDayUTC } from "@/lib/utils";
 import { notifyCompanyUsers } from "@/services/notification.service";
 import { prisma } from "@/lib/prisma";
@@ -144,6 +144,37 @@ export async function deleteHoliday(
   assertPermission(actor.role, "settings:manage");
   await holidayRepo.delete(actor.companyId, id);
   await activityRepo.log(actor.companyId, "holiday.deleted", actor.id, { holidayId: id });
+}
+
+export async function updateHoliday(
+  actor: { id: string; companyId: string; role: UserRole },
+  id: string,
+  name: string,
+  date: string
+) {
+  assertPermission(actor.role, "settings:manage");
+  const trimmed = name.trim();
+  if (!trimmed) throw new ValidationError("Holiday name is required");
+  const holidayDate = startOfDayUTC(new Date(date));
+  if (Number.isNaN(holidayDate.getTime())) {
+    throw new ValidationError("Invalid holiday date");
+  }
+
+  const existing = await prisma.holiday.findFirst({
+    where: { id, companyId: actor.companyId },
+  });
+  if (!existing) throw new NotFoundError("Holiday not found");
+
+  await holidayRepo.update(actor.companyId, id, {
+    name: trimmed,
+    date: holidayDate,
+  });
+
+  await activityRepo.log(actor.companyId, "holiday.updated", actor.id, {
+    holidayId: id,
+  });
+
+  return { id, name: trimmed, date: holidayDate };
 }
 
 export async function listAnnouncements(companyId: string) {

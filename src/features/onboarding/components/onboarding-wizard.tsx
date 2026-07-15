@@ -6,12 +6,14 @@ import {
   createEmployeeAction,
   updateBrandingAction,
   updateWorkPolicyAction,
+  applyIndustryTemplateAction,
 } from "@/features/shared/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastError, toastSuccess } from "@/store/toast";
 import { HolidaySetupPanel } from "@/features/holidays/components/holiday-setup-panel";
+import { INDUSTRY_TEMPLATES } from "@/lib/industry-templates";
 
 const WEEKDAYS = [
   { value: 0, label: "Sun" },
@@ -25,6 +27,7 @@ const WEEKDAYS = [
 
 type CompanySeed = {
   name: string;
+  address: string | null;
   primaryColor: string;
   secondaryColor: string;
   logoUrl: string | null;
@@ -36,7 +39,7 @@ type CompanySeed = {
 };
 
 const STEPS = [
-  { id: 1, title: "Brand", blurb: "Logo & colors so the portal looks like your company." },
+  { id: 1, title: "Brand", blurb: "Logo, address & colors so the portal looks like your company." },
   { id: 2, title: "Timing", blurb: "Office start time, grace, and weekly offs." },
   {
     id: 3,
@@ -132,6 +135,17 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
               <Label>Company display name</Label>
               <Input name="name" required defaultValue={company.name} placeholder="Enter company name" />
             </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label>Company address</Label>
+              <Input
+                name="address"
+                defaultValue={company.address ?? ""}
+                placeholder="Street, area, city, PIN, country"
+              />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Used on payslips and letterheads
+              </p>
+            </div>
             <div className="space-y-1">
               <Label>Primary color</Label>
               <Input name="primaryColor" type="color" defaultValue={company.primaryColor} />
@@ -178,6 +192,43 @@ export function OnboardingWizard({ company }: { company: CompanySeed }) {
               });
             }}
           >
+            <div className="sm:col-span-2 space-y-2 rounded-xl border-2 border-[var(--border)] bg-[var(--secondary)]/40 p-3">
+              <p className="text-sm font-black">Industry preset (optional)</p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                One click sets timing, common leave types, and national holidays. You can still edit below.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {INDUSTRY_TEMPLATES.map((t) => (
+                  <Button
+                    key={t.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => {
+                      setError(null);
+                      const fd = new FormData();
+                      fd.set("templateId", t.id);
+                      startTransition(async () => {
+                        const res = await applyIndustryTemplateAction(fd);
+                        if (res && "error" in res) {
+                          setError(res.error);
+                          toastError("Preset failed", res.error);
+                          return;
+                        }
+                        toastSuccess(
+                          `${t.label} applied`,
+                          "Timing, leave types, and holidays updated — review and continue."
+                        );
+                        setStep(3);
+                      });
+                    }}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Start hour (0-23)</Label>
               <Input

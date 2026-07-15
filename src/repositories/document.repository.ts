@@ -30,11 +30,19 @@ export const documentRepo = {
     employeeId?: string | null;
     name: string;
     fileUrl: string;
-    fileData?: Buffer;
+    fileData?: Uint8Array;
     fileMime?: string;
     expiresAt?: Date | null;
   }) {
-    return prisma.document.create({ data });
+    const { fileData, ...rest } = data;
+    return prisma.document.create({
+      data: {
+        ...rest,
+        ...(fileData !== undefined
+          ? { fileData: new Uint8Array(fileData) as Uint8Array<ArrayBuffer> }
+          : {}),
+      },
+    });
   },
   findById(companyId: string, id: string) {
     return prisma.document.findFirst({ where: { id, companyId } });

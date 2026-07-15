@@ -49,14 +49,35 @@ export async function requestAttendanceException(
   return row;
 }
 
-export async function listPendingExceptions(companyId: string, role: UserRole) {
+export async function listPendingExceptions(
+  companyId: string,
+  role: UserRole,
+  actorUserId?: string
+) {
   const canAll = hasPermission(role as Role, "attendance:view_all");
   const canTeam = hasPermission(role as Role, "attendance:view_team");
   if (!canAll && !canTeam) {
     throw new ForbiddenError("You do not have permission for this action");
   }
+
+  let teamEmployeeIds: string[] | null = null;
+  if (!canAll && canTeam && actorUserId) {
+    const me = await employeeRepo.findByUserId(companyId, actorUserId);
+    if (!me) return [];
+    const reports = await prisma.employee.findMany({
+      where: { companyId, managerId: me.id },
+      select: { id: true },
+    });
+    teamEmployeeIds = reports.map((r) => r.id);
+    if (teamEmployeeIds.length === 0) return [];
+  }
+
   return prisma.attendanceException.findMany({
-    where: { companyId, status: "PENDING" },
+    where: {
+      companyId,
+      status: "PENDING",
+      ...(teamEmployeeIds ? { employeeId: { in: teamEmployeeIds } } : {}),
+    },
     include: { employee: true },
     orderBy: { createdAt: "asc" },
   });
@@ -79,13 +100,25 @@ export async function decideException(
   decision: "APPROVED" | "REJECTED",
   comment?: string
 ) {
-  assertPermission(actor.role, "attendance:view_all");
+  const canAll = hasPermission(actor.role as Role, "attendance:view_all");
+  const canTeam = hasPermission(actor.role as Role, "attendance:view_team");
+  if (!canAll && !canTeam) {
+    throw new ForbiddenError("You do not have permission for this action");
+  }
+
   const row = await prisma.attendanceException.findFirst({
     where: { id, companyId: actor.companyId },
     include: { employee: true },
   });
   if (!row) throw new NotFoundError("Exception not found");
   if (row.status !== "PENDING") throw new ValidationError("Already decided");
+
+  if (!canAll) {
+    const me = await employeeRepo.findByUserId(actor.companyId, actor.id);
+    if (!me || row.employee.managerId !== me.id) {
+      throw new ForbiddenError("You can only decide exceptions for your team");
+    }
+  }
 
   await prisma.attendanceException.update({
     where: { id },

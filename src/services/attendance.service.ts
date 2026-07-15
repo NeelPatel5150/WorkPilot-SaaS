@@ -292,7 +292,7 @@ export async function getEmployeeMonthTimesheet(
   };
 }
 
-/** Admin adjusts a day's punches (also used when approving exceptions). */
+/** Admin/manager adjusts a day's punches (also used when approving exceptions). */
 export async function adminAdjustAttendance(
   actor: { id: string; companyId: string; role: UserRole },
   input: {
@@ -302,7 +302,22 @@ export async function adminAdjustAttendance(
     checkOut?: Date | null;
   }
 ) {
-  assertPermission(actor.role, "attendance:view_all");
+  const canAll = hasPermission(actor.role as Role, "attendance:view_all");
+  const canTeam = hasPermission(actor.role as Role, "attendance:view_team");
+  if (!canAll && !canTeam) {
+    throw new ForbiddenError("You do not have permission for this action");
+  }
+  if (!canAll) {
+    const me = await employeeRepo.findByUserId(actor.companyId, actor.id);
+    const target = await prisma.employee.findFirst({
+      where: { id: input.employeeId, companyId: actor.companyId },
+      select: { managerId: true },
+    });
+    if (!me || !target || target.managerId !== me.id) {
+      throw new ForbiddenError("You can only adjust attendance for your team");
+    }
+  }
+
   const policy = await getWorkPolicy(actor.companyId);
   const date = startOfDayUTC(input.date);
   const late = isLatePunch(policy, input.checkIn);

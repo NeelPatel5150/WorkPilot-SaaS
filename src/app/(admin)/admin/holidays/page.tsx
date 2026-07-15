@@ -11,11 +11,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/utils";
-import { HolidayForms } from "@/features/holidays/components/holiday-forms";
+import { EditHolidayRow, HolidayForms } from "@/features/holidays/components/holiday-forms";
 
 export default async function AdminHolidaysPage() {
   const user = await requireUser();
   const holidays = await listHolidays(user.companyId!);
+  const tz = user.company?.timezone;
 
   return (
     <div className="space-y-6">
@@ -30,16 +31,16 @@ export default async function AdminHolidaysPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead />
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {holidays.map((h) => (
                 <TableRow key={h.id}>
-                  <TableCell className="font-bold">{h.name}</TableCell>
-                  <TableCell>{formatDate(h.date)}</TableCell>
-                  <TableCell className="text-right">
-                    <HolidayForms deleteId={h.id} />
+                  <TableCell className="font-bold align-top">{h.name}</TableCell>
+                  <TableCell className="align-top">{formatDate(h.date, tz)}</TableCell>
+                  <TableCell className="align-top">
+                    <EditHolidayRow id={h.id} name={h.name} date={h.date} />
                   </TableCell>
                 </TableRow>
               ))}

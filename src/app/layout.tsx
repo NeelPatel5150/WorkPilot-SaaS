@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
-import { getSession } from "@/lib/session";
-import { getCurrentTenant } from "@/lib/tenant";
+import { resolveCompany } from "@/lib/company-context";
 import { buildThemeStyle } from "@/lib/theme";
-import { prisma } from "@/lib/prisma";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -17,22 +15,6 @@ const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "600"],
 });
-
-async function resolveCompany() {
-  const tenant = await getCurrentTenant();
-  let company = tenant?.company ?? null;
-  if (!company) {
-    const session = await getSession();
-    if (session?.user?.id) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { company: true },
-      });
-      company = user?.company ?? null;
-    }
-  }
-  return company;
-}
 
 export const viewport: Viewport = {
   themeColor: "#2563EB",
@@ -54,12 +36,17 @@ export async function generateMetadata(): Promise<Metadata> {
             {
               url: `/api/brand/icon?kind=favicon&companyId=${company.id}`,
             },
+            { url: "/favicon.svg", type: "image/svg+xml" },
           ],
           shortcut: `/api/brand/icon?kind=favicon&companyId=${company.id}`,
           apple: `/api/brand/icon?kind=logo&companyId=${company.id}`,
         }
       : {
-          icon: [{ url: "/icons/icon.svg" }],
+          icon: [
+            { url: "/favicon.svg", type: "image/svg+xml" },
+            { url: "/icons/icon.svg", type: "image/svg+xml" },
+          ],
+          shortcut: "/favicon.svg",
           apple: "/icons/icon.svg",
         };
 

@@ -1,21 +1,7 @@
 import type { MetadataRoute } from "next";
-import { getCurrentTenant } from "@/lib/tenant";
-import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { resolveCompany } from "@/lib/company-context";
 
 export const dynamic = "force-dynamic";
-
-async function resolveCompany() {
-  const tenant = await getCurrentTenant();
-  if (tenant?.company) return tenant.company;
-  const session = await getSession();
-  if (!session?.user?.id) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { company: true },
-  });
-  return user?.company ?? null;
-}
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const company = await resolveCompany();

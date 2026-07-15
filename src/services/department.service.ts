@@ -33,3 +33,21 @@ export async function deleteDepartment(
     departmentId: id,
   });
 }
+
+export async function renameDepartment(
+  actor: { id: string; companyId: string; role: UserRole },
+  id: string,
+  name: string
+) {
+  assertPermission(actor.role, "departments:manage");
+  const trimmed = name.trim();
+  if (!trimmed) throw new ValidationError("Department name is required");
+  const existing = await departmentRepo.findById(actor.companyId, id);
+  if (!existing) throw new ValidationError("Department not found");
+  await departmentRepo.rename(actor.companyId, id, trimmed);
+  await activityRepo.log(actor.companyId, "department.renamed", actor.id, {
+    departmentId: id,
+    name: trimmed,
+  });
+  return { id, name: trimmed };
+}

@@ -82,13 +82,14 @@ export async function registerCompany(input: {
   if (employee) {
     const year = new Date().getFullYear();
     const types = await leaveRepo.listTypes(company.id, { applicableOnly: true });
+    const { isEmployeeScopedLeave } = await import("@/lib/leave-catalog");
     for (const type of types) {
       await leaveRepo.upsertBalance({
         companyId: company.id,
         employeeId: employee.id,
         leaveTypeId: type.id,
         year,
-        allocated: type.defaultDays,
+        allocated: isEmployeeScopedLeave(type.code) ? 0 : type.defaultDays,
         used: 0,
       });
     }

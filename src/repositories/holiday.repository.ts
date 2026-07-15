@@ -16,6 +16,12 @@ export const holidayRepo = {
   create(companyId: string, name: string, date: Date) {
     return prisma.holiday.create({ data: { companyId, name, date } });
   },
+  update(companyId: string, id: string, data: { name: string; date: Date }) {
+    return prisma.holiday.updateMany({
+      where: { id, companyId },
+      data: { name: data.name, date: data.date, reminderSentAt: null },
+    });
+  },
   createMany(companyId: string, rows: { name: string; date: Date }[]) {
     if (rows.length === 0) return { count: 0 };
     return prisma.holiday.createMany({

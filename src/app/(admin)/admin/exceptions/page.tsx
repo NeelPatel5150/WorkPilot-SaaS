@@ -16,7 +16,7 @@ import { ExceptionDecisionButtons } from "@/features/attendance/components/excep
 
 export default async function AdminExceptionsPage() {
   const user = await requireUser();
-  const pending = await listPendingExceptions(user.companyId!, user.role);
+  const pending = await listPendingExceptions(user.companyId!, user.role, user.id);
 
   return (
     <div className="space-y-6">

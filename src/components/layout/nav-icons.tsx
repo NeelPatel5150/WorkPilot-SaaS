@@ -14,6 +14,7 @@ import {
   PartyPopper,
   Megaphone,
   CircleHelp,
+  ListTodo,
   type LucideIcon,
 } from "lucide-react";
 import type { NavIconName } from "@/config/nav";
@@ -32,4 +33,5 @@ export const navIcons: Record<NavIconName, LucideIcon> = {
   party: PartyPopper,
   megaphone: Megaphone,
   help: CircleHelp,
+  tasks: ListTodo,
 };

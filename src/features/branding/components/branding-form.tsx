@@ -9,12 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function BrandingForm({
   name,
+  address,
   primaryColor,
   secondaryColor,
   logoUrl,
   faviconUrl,
 }: {
   name: string;
+  address?: string | null;
   primaryColor: string;
   secondaryColor: string;
   logoUrl?: string | null;
@@ -48,6 +50,17 @@ export function BrandingForm({
           <div className="space-y-1 sm:col-span-3">
             <Label>Company display name</Label>
             <Input name="name" defaultValue={name} required />
+          </div>
+          <div className="space-y-1 sm:col-span-3">
+            <Label>Company address</Label>
+            <Input
+              name="address"
+              defaultValue={address ?? ""}
+              placeholder="Street, area, city, PIN, country"
+            />
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Shown on payslips and letterheads
+            </p>
           </div>
           <div className="space-y-1">
             <Label>Primary</Label>
