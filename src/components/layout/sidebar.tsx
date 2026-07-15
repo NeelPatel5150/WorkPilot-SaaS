@@ -1,10 +1,42 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/config/nav";
 import { navIcons } from "@/components/layout/nav-icons";
+
+/** Prefetch high-traffic pages so nav often hits warm RSC. */
+const PREFETCH_HREFS = new Set([
+  "/admin/dashboard",
+  "/admin/approvals",
+  "/admin/attendance",
+  "/admin/employees/manage",
+  "/admin/leaves",
+  "/admin/payroll",
+  "/admin/workspace",
+  "/admin/exceptions",
+  "/employee/dashboard",
+  "/employee/attendance",
+  "/employee/leaves",
+  "/employee/workspace",
+  "/employee/payslips",
+]);
+
+function isActivePath(pathname: string, href: string) {
+  if (pathname === href) return true;
+  // Employee detail pages live under /admin/employees/[id] — highlight Manage.
+  if (href === "/admin/employees/manage") {
+    return (
+      pathname.startsWith("/admin/employees/manage") ||
+      (/^\/admin\/employees\/[^/]+$/.test(pathname) &&
+        pathname !== "/admin/employees/add")
+    );
+  }
+  return pathname.startsWith(`${href}/`);
+}
 
 export function Sidebar({
   items,
@@ -20,6 +52,22 @@ export function Sidebar({
   userImage?: string | null;
 }) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    const next: Record<string, boolean> = {};
+    for (const item of items) {
+      if (!item.children?.length) continue;
+      const groupActive = item.children.some((c) => isActivePath(pathname, c.href));
+      if (groupActive) next[item.href] = true;
+    }
+    setOpenGroups((prev) => ({ ...prev, ...next }));
+  }, [pathname, items]);
 
   return (
     <aside
@@ -52,27 +100,110 @@ export function Sidebar({
 
       <nav className="nb-sidebar-nav mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 pr-5 pb-3">
         {items.map((item) => {
-          const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = navIcons[item.icon];
+          const hasChildren = Boolean(item.children?.length);
+
+          if (hasChildren && item.children) {
+            const groupOpen =
+              openGroups[item.href] ??
+              item.children.some((c) => isActivePath(pathname, c.href));
+            const groupActive = item.children.some((c) => isActivePath(pathname, c.href));
+
+            return (
+              <div key={item.href} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenGroups((prev) => ({
+                      ...prev,
+                      [item.href]: !(prev[item.href] ?? groupOpen),
+                    }))
+                  }
+                  className={cn(
+                    "mr-1.5 flex max-w-[calc(100%-0.375rem)] w-full cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1.5 text-left text-[13px] font-bold transition-all",
+                    groupActive
+                      ? "border-[var(--border)] bg-white/90"
+                      : "border-transparent text-[var(--foreground)] hover:border-[var(--border)] hover:bg-white/80"
+                  )}
+                  aria-expanded={groupOpen}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0 transition-transform",
+                      groupOpen ? "rotate-180" : null
+                    )}
+                  />
+                </button>
+                {groupOpen ? (
+                  <div className="ml-3 space-y-1 border-l-2 border-[var(--border)]/40 pl-2">
+                    {item.children.map((child) => {
+                      const active = isActivePath(pathname, child.href);
+                      const pending = pendingHref === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          prefetch={PREFETCH_HREFS.has(child.href)}
+                          onClick={() => {
+                            if (!active) setPendingHref(child.href);
+                          }}
+                          className={cn(
+                            "flex cursor-pointer items-center rounded-lg border-2 px-2 py-1.5 text-[12px] font-bold transition-all",
+                            active || pending
+                              ? "nb-nav-active"
+                              : "border-transparent text-[var(--foreground)] hover:border-[var(--border)] hover:bg-white/80",
+                            pending && !active ? "opacity-80" : null
+                          )}
+                        >
+                          <span
+                            className={
+                              active || pending
+                                ? "text-white"
+                                : "text-[var(--foreground)]"
+                            }
+                          >
+                            {child.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
+
+          const active = isActivePath(pathname, item.href);
+          const pending = pendingHref === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch={PREFETCH_HREFS.has(item.href)}
+              onClick={() => {
+                if (!active) setPendingHref(item.href);
+              }}
               className={cn(
                 "mr-1.5 flex max-w-[calc(100%-0.375rem)] cursor-pointer items-center gap-2 rounded-lg border-2 px-2 py-1.5 text-[13px] font-bold transition-all",
-                active
+                active || pending
                   ? "nb-nav-active"
-                  : "border-transparent text-[var(--foreground)] hover:border-[var(--border)] hover:bg-white/80"
+                  : "border-transparent text-[var(--foreground)] hover:border-[var(--border)] hover:bg-white/80",
+                pending && !active ? "opacity-80" : null
               )}
             >
               <Icon
                 className={cn(
                   "h-3.5 w-3.5 shrink-0",
-                  active ? "text-white" : "text-[var(--foreground)]"
+                  active || pending ? "text-white" : "text-[var(--foreground)]"
                 )}
               />
-              <span className={active ? "text-white" : "text-[var(--foreground)]"}>
+              <span
+                className={
+                  active || pending ? "text-white" : "text-[var(--foreground)]"
+                }
+              >
                 {item.label}
               </span>
             </Link>

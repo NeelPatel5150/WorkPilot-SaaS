@@ -61,19 +61,38 @@ export const leaveRepo = {
     });
   },
   seedDefaultTypes(companyId: string) {
-    const defaults = [
-      { name: "Casual Leave", code: "CL", defaultDays: 12, sandwichRule: true, carryForward: false, isApplicable: true },
-      { name: "Sick Leave", code: "SL", defaultDays: 10, sandwichRule: false, carryForward: false, isApplicable: true },
-      { name: "Earned Leave", code: "EL", defaultDays: 15, sandwichRule: true, carryForward: true, maxCarryDays: 30, isApplicable: true },
-      { name: "WFH", code: "WFH", defaultDays: 24, sandwichRule: false, carryForward: false, isApplicable: true },
-      { name: "Comp Off", code: "CO", defaultDays: 0, sandwichRule: false, carryForward: false, isApplicable: true },
-    ];
+    // Only Casual Leave is company-default. Admins opt into SL/EL/WFH/CO in Settings.
     return prisma.leaveType.createMany({
-      data: defaults.map((d) => ({ companyId, ...d })),
+      data: [
+        {
+          companyId,
+          name: "Casual Leave",
+          code: "CL",
+          defaultDays: 12,
+          sandwichRule: true,
+          carryForward: false,
+          maxCarryDays: 0,
+          requiresProof: false,
+          isApplicable: true,
+        },
+      ],
       skipDuplicates: true,
     });
   },
-  listRequests(companyId: string, filters?: { employeeId?: string; status?: LeaveStatus }) {
+  findTypeByCode(companyId: string, code: string) {
+    return prisma.leaveType.findFirst({
+      where: { companyId, code },
+    });
+  },
+  findTypeByName(companyId: string, name: string) {
+    return prisma.leaveType.findFirst({
+      where: { companyId, name },
+    });
+  },
+  listRequests(
+    companyId: string,
+    filters?: { employeeId?: string; status?: LeaveStatus; take?: number }
+  ) {
     return prisma.leaveRequest.findMany({
       where: {
         companyId,
@@ -85,6 +104,7 @@ export const leaveRepo = {
         leaveType: true,
       },
       orderBy: { createdAt: "desc" },
+      ...(filters?.take ? { take: filters.take } : {}),
     });
   },
   findRequest(companyId: string, id: string) {
@@ -149,7 +169,10 @@ export const leaveRepo = {
         },
       },
       create: { ...data, used: data.used ?? 0 },
-      update: { allocated: data.allocated, used: data.used },
+      update: {
+        allocated: data.allocated,
+        ...(data.used !== undefined ? { used: data.used } : {}),
+      },
     });
   },
   incrementUsed(companyId: string, employeeId: string, leaveTypeId: string, year: number, days: number) {

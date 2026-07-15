@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Clock, House, ListTodo, UserRound } from "lucide-react";
+import { CalendarCheck, Clock, House, ListTodo, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/employee/dashboard", label: "Home", icon: House, prefetch: true },
-  { href: "/employee/attendance", label: "Punch", icon: Clock, prefetch: true },
-  { href: "/employee/workspace", label: "Work", icon: ListTodo, prefetch: true },
-  { href: "/employee/leaves", label: "Leave", icon: CalendarDays, prefetch: true },
-  { href: "/employee/profile", label: "Me", icon: UserRound, prefetch: false },
+  { href: "/admin/dashboard", label: "Home", icon: House, prefetch: true },
+  { href: "/admin/approvals", label: "Approve", icon: CalendarCheck, prefetch: true },
+  { href: "/admin/attendance", label: "Team", icon: Clock, prefetch: true },
+  { href: "/admin/workspace", label: "Work", icon: ListTodo, prefetch: true },
+  { href: "/admin/notifications", label: "Alerts", icon: Bell, prefetch: false },
 ];
 
-export function EmployeeMobileDock() {
+export function ManagerMobileDock() {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export function EmployeeMobileDock() {
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[var(--border)] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-4px_0_0_var(--border)] backdrop-blur md:hidden"
       style={{ backgroundImage: "var(--card-shine)" }}
-      aria-label="Quick actions"
+      aria-label="Manager quick actions"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-between gap-1">
         {items.map((item) => {

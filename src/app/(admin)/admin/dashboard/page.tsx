@@ -16,7 +16,17 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboardPage() {
   const user = await requireUser();
   const companyId = user.companyId!;
+  const tz = user.company?.timezone;
   const today = startOfDayUTC();
+  const company = user.company!;
+  const trialEnding =
+    company.plan === "TRIAL" &&
+    company.trialEndsAt &&
+    company.trialEndsAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
+  const trialExpired =
+    company.plan === "TRIAL" &&
+    company.trialEndsAt &&
+    company.trialEndsAt.getTime() < Date.now();
 
   const [
     employees,
@@ -32,7 +42,7 @@ export default async function AdminDashboardPage() {
     leaveRepo.countPending(companyId),
     departmentRepo.list(companyId),
     attendanceRepo.listForCompany(companyId, today),
-    leaveRepo.listRequests(companyId, { status: "PENDING" }),
+    leaveRepo.listRequests(companyId, { status: "PENDING", take: 8 }),
     holidayRepo.list(companyId),
   ]);
 
@@ -47,7 +57,7 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title={`Welcome, ${user.name.split(" ")[0]}`}
-        description={`Today · ${formatDate(today)}${
+        description={`Today · ${formatDate(today, tz)}${
           holidayToday ? ` · Holiday: ${holidayToday.name}` : ""
         }`}
         actions={
@@ -61,6 +71,14 @@ export default async function AdminDashboardPage() {
           </div>
         }
       />
+
+      {trialExpired || trialEnding ? (
+        <p className="rounded-xl border-2 border-amber-400/80 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950">
+          {trialExpired
+            ? `Your free trial ended${company.trialEndsAt ? ` on ${formatDate(company.trialEndsAt)}` : ""}. Contact the platform operator to upgrade your plan (${company.plan} · ${company.seatLimit} seats).`
+            : `Trial ending soon${company.trialEndsAt ? ` (${formatDate(company.trialEndsAt)})` : ""}. Plan: ${company.plan} · ${company.seatLimit} seats.`}
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Employees" value={employees} />
@@ -107,8 +125,10 @@ export default async function AdminDashboardPage() {
                       {row.employee.firstName} {row.employee.lastName}
                     </p>
                     <p className="text-xs text-[var(--muted-foreground)]">
-                      In {formatTime(row.checkIn)}
-                      {row.checkOut ? ` · Out ${formatTime(row.checkOut)}` : " · still working"}
+                      In {formatTime(row.checkIn, tz)}
+                      {row.checkOut
+                        ? ` · Out ${formatTime(row.checkOut, tz)}`
+                        : " · still working"}
                     </p>
                   </div>
                   <Badge className={row.isLate ? "bg-[var(--warning)] text-black" : undefined}>
@@ -143,8 +163,8 @@ export default async function AdminDashboardPage() {
                       {req.employee.firstName} {req.employee.lastName}
                     </p>
                     <p className="text-xs text-[var(--muted-foreground)]">
-                      {req.leaveType.name} · {formatDate(req.startDate)} →{" "}
-                      {formatDate(req.endDate)}
+                      {req.leaveType.name} · {formatDate(req.startDate, tz)} →{" "}
+                      {formatDate(req.endDate, tz)}
                     </p>
                   </div>
                   <Badge>PENDING</Badge>
@@ -174,7 +194,7 @@ export default async function AdminDashboardPage() {
                   <span className="font-bold">
                     {row.employee.firstName} {row.employee.lastName}
                   </span>
-                  <span>{formatTime(row.checkIn)}</span>
+                  <span>{formatTime(row.checkIn, tz)}</span>
                 </div>
               ))
             )}

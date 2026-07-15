@@ -4,32 +4,32 @@ import Link from "next/link";
 import { LogOut, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import type { NavItem } from "@/config/nav";
 import { navIcons } from "@/components/layout/nav-icons";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { cn } from "@/lib/utils";
 import { toastSuccess } from "@/store/toast";
 
 export function Header({
   title,
-  brand,
-  logoUrl,
   userName,
   userImage,
   items,
   notificationsHref,
 }: {
   title: string;
-  brand: string;
-  logoUrl?: string | null;
   userName: string;
   userImage?: string | null;
   items: NavItem[];
   notificationsHref: string;
 }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [confirmOut, setConfirmOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -37,6 +37,11 @@ export function Header({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setPendingHref(null);
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!confirmOut) return;
@@ -136,26 +141,10 @@ export function Header({
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-[var(--border)] bg-white shadow-[2px_2px_0_0_var(--border)]">
-              {logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={brand} className="h-full w-full object-contain p-0.5" />
-              ) : (
-                <span className="text-sm font-black text-[var(--primary)]">
-                  {brand.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
-                {brand}
-              </p>
-              <h2 className="text-lg font-black leading-tight">{title}</h2>
-            </div>
-          </div>
+          <h2 className="truncate text-lg font-black leading-tight">{title}</h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <CommandPalette items={items} />
           <NotificationBell href={notificationsHref} />
           <span className="hidden items-center gap-2 rounded-full border-2 border-[var(--border)] bg-white py-1 pl-1 pr-3 text-sm font-semibold shadow-[2px_2px_0_0_var(--border)] sm:inline-flex">
             <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--secondary)] text-xs font-black">
@@ -176,7 +165,7 @@ export function Header({
             onClick={() => setConfirmOut(true)}
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            <span className="hidden sm:inline">Sign out</span>
           </Button>
         </div>
       </div>
@@ -184,13 +173,51 @@ export function Header({
         <nav className="space-y-1 border-t-2 border-[var(--border)] bg-white/95 p-3 md:hidden">
           {items.map((item) => {
             const Icon = navIcons[item.icon];
+            if (item.children?.length) {
+              return (
+                <div key={item.href} className="space-y-1">
+                  <div className="flex items-center gap-3 px-3 py-2 text-xs font-black uppercase tracking-wide text-[var(--muted-foreground)]">
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </div>
+                  {item.children.map((child) => {
+                    const pending = pendingHref === child.href;
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => {
+                          setPendingHref(child.href);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-2.5 pl-10 text-sm font-bold",
+                          pending
+                            ? "nb-nav-active border-[var(--border)] text-white"
+                            : "border-transparent hover:border-[var(--border)] hover:bg-[var(--muted)]"
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+            const pending = pendingHref === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setPendingHref(item.href);
+                  setOpen(false);
+                }}
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-xl border-2 border-transparent px-3 py-2.5 text-sm font-bold hover:border-[var(--border)] hover:bg-[var(--muted)]"
+                  "flex cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-sm font-bold",
+                  pending
+                    ? "nb-nav-active border-[var(--border)] text-white"
+                    : "border-transparent hover:border-[var(--border)] hover:bg-[var(--muted)]"
                 )}
               >
                 <Icon className="h-4 w-4" />

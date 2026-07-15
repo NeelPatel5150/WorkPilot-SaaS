@@ -205,6 +205,18 @@ body {
   height: 0;
 }
 
+/* Nested panels / modals: scroll without a visible bar */
+.nb-scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nb-scroll-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Clickable affordance */
 a,
 button,
@@ -274,4 +286,50 @@ input[type="radio"],
     min-height: 44px;
   }
 }
+
+/* Page skeletons while RSC navigations resolve */
+.nb-skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--muted) 88%, white) 0%,
+    color-mix(in srgb, var(--secondary) 70%, white) 45%,
+    color-mix(in srgb, var(--muted) 88%, white) 100%
+  );
+  background-size: 200% 100%;
+  animation: nb-skeleton-shimmer 1.15s ease-in-out infinite;
+}
+
+@keyframes nb-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes nb-route-progress {
+  0% {
+    transform: scaleX(0.08);
+  }
+  100% {
+    transform: scaleX(0.78);
+  }
+}
+
+.nb-route-progress {
+  width: 100%;
+  transform: scaleX(0.08);
+  animation: nb-route-progress 8s cubic-bezier(0.1, 0.4, 0.2, 1) forwards;
+}
+
+.nb-route-progress-done {
+  width: 100%;
+  transform: scaleX(1);
+  opacity: 0;
+  transition:
+    transform 0.18s ease-out,
+    opacity 0.22s ease-out 0.05s;
+}
+
 

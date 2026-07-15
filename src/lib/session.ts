@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -6,9 +7,10 @@ import type { UserRole } from "@/generated/prisma";
 import { hasPermission, type Permission, type Role } from "@/lib/permissions";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 
-export async function getSession() {
+/** Deduped per request — layout + page share one session/DB hit. */
+export const getSession = cache(async () => {
   return auth.api.getSession({ headers: await headers() });
-}
+});
 
 export async function requireSession() {
   const session = await getSession();
@@ -18,7 +20,8 @@ export async function requireSession() {
   return session;
 }
 
-export async function requireUser() {
+/** Deduped per request — admin layout and page both call this. */
+export const requireUser = cache(async () => {
   const session = await requireSession();
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -37,7 +40,7 @@ export async function requireUser() {
   }
 
   return user;
-}
+});
 
 export async function requirePermission(permission: Permission) {
   const user = await requireUser();
