@@ -6,6 +6,68 @@ import { formatDate, formatTime } from "@/lib/utils";
 
 export type ReportKind = "attendance" | "leave" | "employees" | "late";
 
+export async function buildBankSalaryCsv(
+  companyId: string,
+  role: UserRole,
+  year: number,
+  month: number
+) {
+  assertPermission(role, "payroll:manage");
+
+  const slips = await prisma.salarySlip.findMany({
+    where: {
+      companyId,
+      year,
+      month,
+      status: { in: ["PUBLISHED", "LOCKED"] },
+    },
+    include: { employee: true },
+    orderBy: { employee: { employeeCode: "asc" } },
+  });
+
+  const headers = [
+    "Employee Code",
+    "Name",
+    "Account Name",
+    "Account Number",
+    "IFSC",
+    "Bank Name",
+    "Amount",
+    "Narration",
+  ];
+
+  const rows = slips.map((s) => {
+    const e = s.employee;
+    const name = `${e.firstName} ${e.lastName}`.trim();
+    return [
+      e.employeeCode,
+      name,
+      e.bankAccountName || name,
+      e.bankAccountNumber || "",
+      e.bankIfsc || "",
+      e.bankName || "",
+      String(Math.round(s.netPay)),
+      `SALARY ${String(month).padStart(2, "0")}${year}`,
+    ];
+  });
+
+  const escape = (cell: string) => {
+    if (/[",\n\r]/.test(cell)) return `"${cell.replace(/"/g, '""')}"`;
+    return cell;
+  };
+
+  const lines = [
+    headers.map(escape).join(","),
+    ...rows.map((r) => r.map(escape).join(",")),
+  ];
+
+  return {
+    filename: `bank-salary-${year}-${String(month).padStart(2, "0")}.csv`,
+    csv: lines.join("\n"),
+    count: slips.length,
+  };
+}
+
 export async function buildReportRows(
   companyId: string,
   role: UserRole,

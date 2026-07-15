@@ -40,9 +40,11 @@ type Preview = {
 export function GeneratePayrollForm({
   defaultMonth,
   employees,
+  pendingExceptions = 0,
 }: {
   defaultMonth: string;
   employees: EmployeeOption[];
+  pendingExceptions?: number;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -71,32 +73,49 @@ export function GeneratePayrollForm({
     });
   }, [employeeId, month, employees]);
 
+  function runGenerate(fd: FormData) {
+    startTransition(async () => {
+      const res = await generatePayrollAction(fd);
+      if (res && "error" in res) {
+        setError(res.error);
+        toastError("Payroll failed", res.error);
+        return;
+      }
+      if (res && "count" in res) {
+        toastSuccess(
+          res.status === "PUBLISHED" ? "Payslips published" : "Payslips drafted",
+          `${res.count} slip(s) for ${res.month}/${res.year}`
+        );
+      }
+    });
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Generate salary slips</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {pendingExceptions > 0 ? (
+          <p className="rounded-xl border-2 border-amber-400/80 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+            {pendingExceptions} attendance exception(s) still pending. Generating
+            now may use outdated LOP. Resolve on Exceptions when possible.
+          </p>
+        ) : null}
         <form
           className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
             const fd = new FormData(e.currentTarget);
-            startTransition(async () => {
-              const res = await generatePayrollAction(fd);
-              if (res && "error" in res) {
-                setError(res.error);
-                toastError("Payroll failed", res.error);
-                return;
-              }
-              if (res && "count" in res) {
-                toastSuccess(
-                  res.status === "PUBLISHED" ? "Payslips published" : "Payslips drafted",
-                  `${res.count} slip(s) for ${res.month}/${res.year}`
-                );
-              }
-            });
+            const bulk = !String(fd.get("employeeId") || "");
+            if (bulk && pendingExceptions > 0) {
+              const ok = window.confirm(
+                `${pendingExceptions} attendance exception(s) are still pending.\n\nGenerate payroll anyway? LOP may be wrong until exceptions are approved.`
+              );
+              if (!ok) return;
+            }
+            runGenerate(fd);
           }}
         >
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">

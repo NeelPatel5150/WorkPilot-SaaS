@@ -12,11 +12,8 @@ function monthBounds(year: number, month: number) {
   return { from, to, calendarDays: to.getUTCDate() };
 }
 
-async function assertMonthUnlocked(companyId: string, year: number, month: number) {
-  const lock = await prisma.payrollMonthLock.findUnique({
-    where: { companyId_year_month: { companyId, year, month } },
-  });
-  if (lock) throw new ValidationError("This payroll month is locked");
+async function assertMonthUnlocked(_companyId: string, _year: number, _month: number) {
+  // Month lock removed from admin payroll — generate/edit/publish always allowed.
 }
 
 export async function listSalarySlipsForCompany(
@@ -364,7 +361,6 @@ export async function updateSalarySlip(
   });
   if (!slip) throw new NotFoundError("Slip not found");
   await assertMonthUnlocked(actor.companyId, slip.year, slip.month);
-  if (slip.status === "LOCKED") throw new ValidationError("Slip is locked");
 
   const basic = patch.basic ?? slip.basic;
   const allowances = patch.allowances ?? slip.allowances;
@@ -434,23 +430,42 @@ export async function publishSalarySlip(
 }
 
 export async function lockPayrollMonth(
-  actor: { id: string; companyId: string; role: UserRole },
+  _actor: { id: string; companyId: string; role: UserRole },
+  _year: number,
+  _month: number
+) {
+  throw new ValidationError("Month lock has been removed from payroll");
+}
+
+export async function getPayrollCloseSummary(
+  companyId: string,
+  role: UserRole,
   year: number,
   month: number
 ) {
-  assertPermission(actor.role, "payroll:manage");
-  await prisma.payrollMonthLock.upsert({
-    where: { companyId_year_month: { companyId: actor.companyId, year, month } },
-    create: {
-      companyId: actor.companyId,
-      year,
-      month,
-      lockedById: actor.id,
-    },
-    update: { lockedAt: new Date(), lockedById: actor.id },
-  });
-  await prisma.salarySlip.updateMany({
-    where: { companyId: actor.companyId, year, month },
-    data: { status: "LOCKED" },
-  });
+  assertPermission(role, "payroll:manage");
+
+  const [pendingExceptions, slips] = await Promise.all([
+    prisma.attendanceException.count({
+      where: { companyId, status: "PENDING" },
+    }),
+    prisma.salarySlip.findMany({
+      where: { companyId, year, month },
+      select: { status: true, lopDays: true, netPay: true },
+    }),
+  ]);
+
+  const draftCount = slips.filter((s) => s.status === "DRAFT").length;
+  const publishedCount = slips.filter(
+    (s) => s.status === "PUBLISHED" || s.status === "LOCKED"
+  ).length;
+  const totalLop = slips.reduce((n, s) => n + (s.lopDays || 0), 0);
+
+  return {
+    pendingExceptions,
+    slipCount: slips.length,
+    draftCount,
+    publishedCount,
+    totalLop: Math.round(totalLop * 100) / 100,
+  };
 }

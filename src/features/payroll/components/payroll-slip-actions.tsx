@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import {
   publishSlipAction,
-  lockPayrollMonthAction,
   updateSalarySlipAction,
 } from "@/features/shared/actions";
 import { Button } from "@/components/ui/button";
@@ -29,8 +28,6 @@ type Slip = {
 export function PayrollSlipActions({ slip }: { slip: Slip }) {
   const [edit, setEdit] = useState(false);
   const [pending, startTransition] = useTransition();
-  const monthVal = `${slip.year}-${String(slip.month).padStart(2, "0")}`;
-  const locked = slip.status === "LOCKED";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -58,35 +55,17 @@ export function PayrollSlipActions({ slip }: { slip: Slip }) {
           Publish
         </Button>
       ) : null}
-      {!locked ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={pending}
-          onClick={() => setEdit((v) => !v)}
-        >
-          {edit ? "Close edit" : "Edit"}
-        </Button>
-      ) : null}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const fd = new FormData();
-          fd.set("month", monthVal);
-          startTransition(async () => {
-            const res = await lockPayrollMonthAction(fd);
-            if (res && "error" in res) toastError("Lock failed", res.error);
-            else toastSuccess("Month locked", "No further edits.");
-          });
-        }}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pending}
+        onClick={() => setEdit((v) => !v)}
       >
-        <Button type="submit" size="sm" variant="secondary" disabled={pending || locked}>
-          Lock month
-        </Button>
-      </form>
+        {edit ? "Close edit" : "Edit"}
+      </Button>
 
-      {edit && !locked ? (
+      {edit ? (
         <form
           className="mt-2 grid w-full gap-2 rounded-lg border-2 border-[var(--border)] bg-white p-3 sm:grid-cols-3"
           onSubmit={(e) => {
@@ -97,7 +76,7 @@ export function PayrollSlipActions({ slip }: { slip: Slip }) {
               const res = await updateSalarySlipAction(fd);
               if (res && "error" in res) toastError("Update failed", res.error);
               else {
-                toastSuccess("Slip updated", `Net recalculated.`);
+                toastSuccess("Slip updated", "Net recalculated.");
                 setEdit(false);
               }
             });

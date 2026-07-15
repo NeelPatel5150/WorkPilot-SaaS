@@ -1,5 +1,8 @@
 import { requireUser } from "@/lib/session";
-import { listSalarySlipsForCompany, isMonthLocked } from "@/services/payroll.service";
+import {
+  listSalarySlipsForCompany,
+  getPayrollCloseSummary,
+} from "@/services/payroll.service";
 import { listEmployees } from "@/services/employee.service";
 import { PageHeader, EmptyState, StatCard } from "@/components/shared/page";
 import { Card } from "@/components/ui/card";
@@ -14,6 +17,8 @@ import {
 } from "@/components/ui/table";
 import { GeneratePayrollForm } from "@/features/payroll/components/generate-payroll-form";
 import { PayrollSlipActions } from "@/features/payroll/components/payroll-slip-actions";
+import { BankCsvDownload } from "@/features/payroll/components/bank-csv-download";
+import { PayrollCloseChecklist } from "@/features/payroll/components/payroll-close-checklist";
 
 function currentMonthValue(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -29,10 +34,10 @@ export default async function AdminPayrollPage({
   const monthVal =
     sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : currentMonthValue();
   const [y, m] = monthVal.split("-").map(Number);
-  const [slips, employees, locked] = await Promise.all([
+  const [slips, employees, closeSummary] = await Promise.all([
     listSalarySlipsForCompany(user.companyId!, user.role, y, m),
     listEmployees(user.companyId!, user.role),
-    isMonthLocked(user.companyId!, y, m),
+    getPayrollCloseSummary(user.companyId!, user.role, y, m),
   ]);
   const totalNet = slips.reduce((s, r) => s + r.netPay, 0);
   const employeeOptions = employees
@@ -47,18 +52,19 @@ export default async function AdminPayrollPage({
     <div className="space-y-6">
       <PageHeader
         title="Payroll"
-        description="Draft slips with LOP / PF / ESI / TDS, edit before publish, then lock the month."
+        description="Draft slips with LOP / PF / ESI / TDS, edit, then publish and download bank CSV."
+        actions={<BankCsvDownload year={y} month={m} />}
       />
-      {locked ? (
-        <p className="rounded-xl border-2 border-[var(--border)] bg-white px-4 py-3 text-sm font-bold">
-          {m}/{y} is locked - no new edits.
-        </p>
-      ) : null}
-      <GeneratePayrollForm defaultMonth={monthVal} employees={employeeOptions} />
+      <PayrollCloseChecklist monthLabel={`${m}/${y}`} summary={closeSummary} />
+      <GeneratePayrollForm
+        defaultMonth={monthVal}
+        employees={employeeOptions}
+        pendingExceptions={closeSummary.pendingExceptions}
+      />
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Slips this month" value={slips.length} />
         <StatCard label="Total net pay" value={Math.round(totalNet)} />
-        <StatCard label="Month" value={`${m}/${y}${locked ? " · LOCKED" : ""}`} />
+        <StatCard label="Month" value={`${m}/${y}`} />
       </div>
       {slips.length === 0 ? (
         <EmptyState
@@ -94,7 +100,7 @@ export default async function AdminPayrollPage({
                   </TableCell>
                   <TableCell className="font-black">{s.netPay}</TableCell>
                   <TableCell>
-                    <Badge>{s.status}</Badge>
+                    <Badge>{s.status === "LOCKED" ? "PUBLISHED" : s.status}</Badge>
                   </TableCell>
                   <TableCell>
                     <PayrollSlipActions slip={s} />
