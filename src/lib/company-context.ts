@@ -8,15 +8,20 @@ import { prisma } from "@/lib/prisma";
  * Shared by root layout + generateMetadata so we only hit the DB once.
  */
 export const resolveCompany = cache(async () => {
-  const tenant = await getCurrentTenant();
-  if (tenant?.company) return tenant.company;
+  try {
+    const tenant = await getCurrentTenant();
+    if (tenant?.company) return tenant.company;
 
-  const session = await getSession();
-  if (!session?.user?.id) return null;
+    const session = await getSession();
+    if (!session?.user?.id) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { company: true },
-  });
-  return user?.company ?? null;
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { company: true },
+    });
+    return user?.company ?? null;
+  } catch (error) {
+    console.error("[company] resolveCompany failed:", error);
+    return null;
+  }
 });

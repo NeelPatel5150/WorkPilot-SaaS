@@ -1,8 +1,10 @@
 import { PrismaClient } from "@/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  pgPool: Pool | undefined;
 };
 
 /** Models added after early MVP - Turbopack can keep an old client without these. */
@@ -32,7 +34,22 @@ function createPrismaClient() {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
-  const adapter = new PrismaPg({ connectionString });
+
+  // Supabase (and many hosted Postgres) use a cert chain Node rejects by
+  // default → P1011 "self-signed certificate in certificate chain" on Vercel.
+  // sslmode=require encrypts traffic; rejectUnauthorized:false skips CA verify.
+  const pool =
+    globalForPrisma.pgPool ??
+    new Pool({
+      connectionString,
+      max: 1,
+      ssl: connectionString.includes("sslmode=disable")
+        ? undefined
+        : { rejectUnauthorized: false },
+    });
+  globalForPrisma.pgPool = pool;
+
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],

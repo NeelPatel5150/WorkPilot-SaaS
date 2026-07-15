@@ -8,8 +8,12 @@ import { getAuthBrand } from "@/lib/auth-brand";
 export default async function HomePage() {
   const session = await getSession();
   if (session?.user) {
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-    if (user?.companyId) redirect(portalHomeForRole(user.role));
+    try {
+      const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+      if (user?.companyId) redirect(portalHomeForRole(user.role));
+    } catch (error) {
+      console.error("[home] user lookup failed:", error);
+    }
   }
 
   const brand = await getAuthBrand();

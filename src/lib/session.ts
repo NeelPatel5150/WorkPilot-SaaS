@@ -9,7 +9,14 @@ import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 
 /** Deduped per request — layout + page share one session/DB hit. */
 export const getSession = cache(async () => {
-  return auth.api.getSession({ headers: await headers() });
+  try {
+    return await auth.api.getSession({ headers: await headers() });
+  } catch (error) {
+    // Misconfigured auth env (e.g. missing BETTER_AUTH_SECRET on Vercel)
+    // must not 500 public pages — login will still fail until env is fixed.
+    console.error("[auth] getSession failed:", error);
+    return null;
+  }
 });
 
 export async function requireSession() {
