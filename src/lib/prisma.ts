@@ -29,24 +29,28 @@ const REQUIRED_MODEL_FIELDS = {
   Employee: ["bankAccountNumber", "bankIfsc", "panNumber", "pfEligible"],
 } as const;
 
+/** pg treats sslmode=require as verify-full unless stripped; use explicit Pool.ssl instead. */
+function pgPoolConfig(connectionString: string) {
+  const url = new URL(connectionString);
+  const sslDisabled = url.searchParams.get("sslmode") === "disable";
+  url.searchParams.delete("sslmode");
+  url.searchParams.delete("uselibpqcompat");
+
+  return {
+    connectionString: url.toString(),
+    max: 1,
+    ssl: sslDisabled ? undefined : { rejectUnauthorized: false },
+  } satisfies ConstructorParameters<typeof Pool>[0];
+}
+
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
 
-  // Supabase (and many hosted Postgres) use a cert chain Node rejects by
-  // default → P1011 "self-signed certificate in certificate chain" on Vercel.
-  // sslmode=require encrypts traffic; rejectUnauthorized:false skips CA verify.
   const pool =
-    globalForPrisma.pgPool ??
-    new Pool({
-      connectionString,
-      max: 1,
-      ssl: connectionString.includes("sslmode=disable")
-        ? undefined
-        : { rejectUnauthorized: false },
-    });
+    globalForPrisma.pgPool ?? new Pool(pgPoolConfig(connectionString));
   globalForPrisma.pgPool = pool;
 
   const adapter = new PrismaPg(pool);
