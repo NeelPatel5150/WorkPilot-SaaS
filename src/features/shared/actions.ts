@@ -4,6 +4,7 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { revalidateCompanyShellCache } from "@/lib/company-shell";
 import { registerCompany } from "@/services/company.service";
 import { createEmployee, listEmployees } from "@/services/employee.service";
 import { createDepartment, deleteDepartment } from "@/services/department.service";
@@ -83,6 +84,11 @@ export async function completeOnboardingAction() {
       return { error: "Only company admins can finish setup" };
     }
     await companyRepo.markSetupComplete(user.companyId!);
+    revalidateCompanyShellCache(
+      user.companyId!,
+      user.company?.slug,
+      user.company?.customDomain
+    );
     revalidatePath("/admin/dashboard");
     revalidatePath("/onboarding");
     return { success: true };
@@ -311,6 +317,11 @@ export async function updateBrandingAction(formData: FormData) {
     }
 
     await companyRepo.updateBranding(companyId, patch);
+    revalidateCompanyShellCache(
+      companyId,
+      user.company?.slug,
+      user.company?.customDomain
+    );
     revalidatePath("/admin/settings");
     revalidatePath("/admin/dashboard");
     revalidatePath("/employee/dashboard");
@@ -697,6 +708,11 @@ export async function updateTenantSettingsAction(formData: FormData) {
         ...(fromEmail ? { fromEmail } : {}),
       },
     });
+    revalidateCompanyShellCache(
+      user.companyId!,
+      user.company?.slug,
+      user.company?.customDomain
+    );
     revalidatePath("/admin/settings");
     return { success: true };
   } catch (error) {
@@ -730,7 +746,13 @@ export async function updateWorkPolicyAction(formData: FormData) {
         officeIpAllowlist: ipRaw || null,
       }
     );
+    revalidateCompanyShellCache(
+      user.companyId!,
+      user.company?.slug,
+      user.company?.customDomain
+    );
     revalidatePath("/admin/settings");
+    revalidatePath("/onboarding");
     return { success: true };
   } catch (error) {
     return toActionError(error);

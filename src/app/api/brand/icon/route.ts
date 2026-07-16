@@ -4,6 +4,15 @@ import { readFile } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenant } from "@/lib/tenant";
 
+const brandBinarySelect = {
+  logoUrl: true,
+  faviconUrl: true,
+  logoData: true,
+  logoMime: true,
+  faviconData: true,
+  faviconMime: true,
+} as const;
+
 const MIME: Record<string, string> = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -22,13 +31,20 @@ export async function GET(req: NextRequest) {
   const kind = req.nextUrl.searchParams.get("kind") === "logo" ? "logo" : "favicon";
   const companyIdParam = req.nextUrl.searchParams.get("companyId");
 
-  let company = null as Awaited<ReturnType<typeof prisma.company.findUnique>> | null;
-  if (companyIdParam) {
-    company = await prisma.company.findUnique({ where: { id: companyIdParam } });
-  } else {
+  let companyId = companyIdParam;
+  if (!companyId) {
     const tenant = await getCurrentTenant();
-    company = tenant?.company ?? null;
+    companyId = tenant?.company.id ?? null;
   }
+
+  if (!companyId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: brandBinarySelect,
+  });
 
   if (!company) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

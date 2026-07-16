@@ -1,9 +1,12 @@
 import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
-import type { Company } from "@/generated/prisma";
+import {
+  getCachedCompanyShellByDomain,
+  getCachedCompanyShellBySlug,
+  type CompanyShell,
+} from "@/lib/company-shell";
 
 export type TenantContext = {
-  company: Company;
+  company: CompanyShell;
   slug: string | null;
   customDomain: string | null;
 };
@@ -19,16 +22,14 @@ export async function getCurrentTenant(): Promise<TenantContext | null> {
     const customDomain = h.get("x-tenant-custom-domain");
 
     if (slug) {
-      const company = await prisma.company.findUnique({ where: { slug } });
-      if (!company || !company.isActive) return null;
+      const company = await getCachedCompanyShellBySlug(slug);
+      if (!company) return null;
       return { company, slug, customDomain: null };
     }
 
     if (customDomain) {
-      const company = await prisma.company.findUnique({
-        where: { customDomain },
-      });
-      if (!company || !company.isActive) return null;
+      const company = await getCachedCompanyShellByDomain(customDomain);
+      if (!company) return null;
       return { company, slug: null, customDomain };
     }
 
@@ -40,5 +41,6 @@ export async function getCurrentTenant(): Promise<TenantContext | null> {
 }
 
 export async function getCompanyById(companyId: string) {
-  return prisma.company.findUnique({ where: { id: companyId } });
+  const { getCachedCompanyShellById } = await import("@/lib/company-shell");
+  return getCachedCompanyShellById(companyId);
 }

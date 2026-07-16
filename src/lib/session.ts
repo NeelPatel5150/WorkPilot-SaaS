@@ -3,9 +3,15 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  requireUserSelect,
+  type RequireUserResult,
+} from "@/lib/company-shell";
 import type { UserRole } from "@/generated/prisma";
 import { hasPermission, type Permission, type Role } from "@/lib/permissions";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
+
+export type { RequireUserResult };
 
 /** Deduped per request — layout + page share one session/DB hit. */
 export const getSession = cache(async () => {
@@ -28,14 +34,11 @@ export async function requireSession() {
 }
 
 /** Deduped per request — admin layout and page both call this. */
-export const requireUser = cache(async () => {
+export const requireUser = cache(async (): Promise<RequireUserResult> => {
   const session = await requireSession();
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    include: {
-      employee: true,
-      company: true,
-    },
+    select: requireUserSelect,
   });
 
   if (!user || !user.isActive) {
