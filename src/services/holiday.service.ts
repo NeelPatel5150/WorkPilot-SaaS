@@ -96,6 +96,12 @@ export async function importHolidays(
   }
 
   if (toCreate.length === 0) {
+    const duplicateOnly =
+      skipped.length > 0 &&
+      skipped.every((msg) => msg.includes("already exists"));
+    if (duplicateOnly) {
+      return { imported: 0, skipped: skipped.length, alreadyPresent: true as const };
+    }
     throw new ValidationError(
       skipped.length
         ? `Nothing imported. ${skipped.slice(0, 3).join("; ")}`
@@ -108,7 +114,7 @@ export async function importHolidays(
     count: toCreate.length,
   });
 
-  return { imported: toCreate.length, skipped: skipped.length };
+  return { imported: toCreate.length, skipped: skipped.length, alreadyPresent: false as const };
 }
 
 /** Day-before reminders for upcoming holidays (run from worker). */

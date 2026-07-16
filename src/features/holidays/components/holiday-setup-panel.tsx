@@ -28,6 +28,23 @@ export function HolidaySetupPanel({
   const [manualRows, setManualRows] = useState([{ name: "", date: "" }]);
   const packs = listIndiaHolidayPacks();
 
+  function holidayImportMessage(res: {
+    imported?: number;
+    skipped?: number;
+    alreadyPresent?: boolean;
+  }) {
+    if (res.alreadyPresent || (res.imported === 0 && (res.skipped ?? 0) > 0)) {
+      return {
+        title: "Holidays already on calendar",
+        body: "Those dates were already added — you can continue setup.",
+      };
+    }
+    return {
+      title: "Holidays imported",
+      body: `${res.imported ?? 0} holiday(s) added`,
+    };
+  }
+
   function addManualRow() {
     setManualRows((rows) => [...rows, { name: "", date: "" }]);
   }
@@ -88,12 +105,8 @@ export function HolidaySetupPanel({
                       toastError("Import failed", res.error);
                       return;
                     }
-                    toastSuccess(
-                      `${p.label} imported`,
-                      res && "imported" in res
-                        ? `${res.imported} holiday(s) added`
-                        : "Done"
-                    );
+                    const msg = holidayImportMessage(res ?? {});
+                    toastSuccess(msg.title, msg.body);
                     onDone?.();
                   });
                 }}
@@ -104,9 +117,6 @@ export function HolidaySetupPanel({
               </button>
             ))}
           </div>
-          {error ? (
-            <p className="text-sm font-semibold text-[var(--destructive)]">{error}</p>
-          ) : null}
           <div className="flex flex-wrap gap-2">
             {onBack ? (
               <Button type="button" variant="outline" onClick={onBack} disabled={pending}>
@@ -147,10 +157,8 @@ export function HolidaySetupPanel({
                 toastError("Could not save holidays", res.error);
                 return;
               }
-              toastSuccess(
-                "Holidays saved",
-                `${res && "imported" in res ? res.imported : rows.length} added`
-              );
+              const msg = holidayImportMessage(res ?? {});
+              toastSuccess(msg.title, msg.body);
               onDone?.();
             });
           }}
@@ -218,10 +226,8 @@ export function HolidaySetupPanel({
                 toastError("Import failed", res.error);
                 return;
               }
-              toastSuccess(
-                "Holidays imported",
-                `${res && "imported" in res ? res.imported : 0} added`
-              );
+              const msg = holidayImportMessage(res ?? {});
+              toastSuccess(msg.title, msg.body);
               onDone?.();
             });
           }}
@@ -274,10 +280,8 @@ export function HolidaySetupPanel({
                 toastError("Sheet import failed", res.error);
                 return;
               }
-              toastSuccess(
-                "Holidays imported",
-                `${res && "imported" in res ? res.imported : 0} added`
-              );
+              const msg = holidayImportMessage(res ?? {});
+              toastSuccess(msg.title, msg.body);
               onDone?.();
             });
           }}
